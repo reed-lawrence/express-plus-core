@@ -1,5 +1,6 @@
 import { Request, Response } from "express-serve-static-core";
 import "reflect-metadata";
+import { IHttpTypeParameters } from "./decorations/http-type";
 
 export interface IApiController {
   routePrefix: string;
@@ -21,13 +22,14 @@ export class ApiController implements IApiController {
     const metadataKeys: string[] = Reflect.getMetadataKeys(this);
     // console.log(metadataKeys);
     for (const key of metadataKeys) {
-      const keyVal = Reflect.getMetadata(key, this);
-      if (key.indexOf('endpoint:') !== -1 && (keyVal === 'GET' || keyVal === 'POST' || keyVal === 'PUT' || keyVal === 'DELETE')) {
+      const keyVal: IHttpTypeParameters<any> = Reflect.getMetadata(key, this);
+      if (key.indexOf('endpoint:') !== -1 && (keyVal.type === 'GET' || keyVal.type === 'POST' || keyVal.type === 'PUT' || keyVal.type === 'DELETE')) {
         const fnName = key.split('endpoint:')[1];
         this.endpoints.push(new ApiEndpoint({
           route: fnName,
           fn: this[fnName as Extract<keyof this, string>] as any,
-          type: keyVal
+          type: keyVal.type,
+          bodyType: keyVal.fromBody
         }));
       }
     }
@@ -53,25 +55,19 @@ export interface IApiEndpoint {
   route: string;
   type: 'GET' | 'POST' | 'PUT' | 'DELETE';
   fn: (req: Request<string[]>, res: Response) => any;
+  bodyType?: { new(): ObjectConstructor } | undefined;
 }
 
 export class ApiEndpoint implements IApiEndpoint {
   route: string;
   type: 'GET' | 'POST' | 'PUT' | 'DELETE';
   fn: (req: Request<string[]>, res: Response) => any;
+  bodyType?: { new(): ObjectConstructor } | undefined;
 
   constructor(init?: IApiEndpoint) {
     this.route = init ? init.route : '';
     this.type = init ? init.type : 'GET';
     this.fn = init ? init.fn : () => { return; };
-  }
-}
-
-export function HttpType(args: 'GET' | 'POST' | 'PUT' | 'DELETE') {
-  // console.log(args);
-  return function (target: ApiController, propertyKey: string, descriptor: PropertyDescriptor) {
-    // target.endpoints.push(new Endpoint());
-    Reflect.defineMetadata('endpoint:' + propertyKey, args, target);
-    // console.log(target, propertyKey, descriptor);
+    this.bodyType = init && init.bodyType ? init.bodyType : undefined;
   }
 }
