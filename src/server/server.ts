@@ -11,6 +11,8 @@ export class Server {
   public static app = express();
   public static start() {
 
+    this.app.use(express.json());
+
     this.app.get('/', (req, res) => {
       res.send('Hello World');
     });
