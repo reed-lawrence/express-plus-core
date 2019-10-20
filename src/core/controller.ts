@@ -1,18 +1,21 @@
-import { Request, Response } from "express-serve-static-core";
+import { Request, Response, Dictionary } from "express-serve-static-core";
 import "reflect-metadata";
 import { IHttpTypeParameters } from "./decorations/http-type";
 import { Utils } from "./utils";
+import { HttpContext } from "./http-context";
+import { Ok } from "./return-types";
 
 export interface IApiController<T> {
   routePrefix: string;
   endpoints: IApiEndpoint<T>[];
+  default: (context: HttpContext) => Response;
 }
 
 export class ApiController<T> implements IApiController<T> {
   routePrefix: string;
   endpoints: ApiEndpoint<T>[];
-  default(req: Request<string[]>, res: Response) {
-    return res.send();
+  default(context: HttpContext) {
+    return Ok(context);
   }
 
   constructor(routePrefix?: string) {
@@ -64,14 +67,14 @@ export class ApiController<T> implements IApiController<T> {
 export interface IApiEndpoint<T> {
   route: string;
   type: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  fn: (req: Request<string[]>, res: Response) => any;
+  fn: (context: HttpContext) => any;
   bodyType?: { new(): T } | T | undefined;
 }
 
 export class ApiEndpoint<T> implements IApiEndpoint<T> {
   route: string;
   type: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  fn: (req: Request<string[]>, res: Response) => any;
+  fn: (context: HttpContext) => any;
   bodyType?: { new(): T } | T | undefined;
 
   constructor(init?: IApiEndpoint<T>) {

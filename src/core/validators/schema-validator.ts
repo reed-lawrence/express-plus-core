@@ -1,4 +1,4 @@
-import { Request } from "express-serve-static-core";
+import { Request, Dictionary } from "express-serve-static-core";
 import "reflect-metadata";
 import { Utils } from "../utils";
 import { emailMetaKey } from "../decorations/email-address";
@@ -8,7 +8,7 @@ import { requiredMetaKey } from "../decorations/required";
 
 
 export class SchemaValidator {
-  public static ValidateBody<T extends Object>(req: Request<string[]>, classRef: { new(): T } | T) {
+  public static ValidateBody<T extends Object>(req: Request<Dictionary<string>>, classRef: { new(): T } | T) {
     console.log(typeof classRef);
     const obj = classRef instanceof Function ? new classRef() : classRef;
     if (typeof req.body !== typeof obj) {

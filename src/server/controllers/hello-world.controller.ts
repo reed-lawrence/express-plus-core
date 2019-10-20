@@ -2,6 +2,8 @@ import { ApiController } from "../../core/controller";
 import { Request, Response } from "express-serve-static-core";
 import { HttpType } from "../../core/decorations/http-type";
 import { ExampleObject } from "../../classes/example-object";
+import { HttpContext } from "../../core/http-context";
+import { Ok, BadRequest } from "../../core/return-types";
 
 export class HelloWorldController<T> extends ApiController<T> {
 
@@ -9,19 +11,24 @@ export class HelloWorldController<T> extends ApiController<T> {
     super();
   }
 
-  default(req: Request<string[]>, res: Response) {
-    return res.send('Hello World From Controller');
+  default(context: HttpContext) {
+    return Ok(context, 'Hello world default overridden');
   }
 
   @HttpType('GET', { route: 'test2/:id' })
-  test(req: Request<string[]>, res: Response) {
-    return res.send('Hello World Test: ' + (req.params as any).id);
+  test(context: HttpContext) {
+    return Ok(context, 'Hello World Test: ' + (context.request.params as any).id);
   }
 
   @HttpType('POST', { fromBody: ExampleObject })
-  TestSchema(req: Request<string[]>, res: Response) {
+  TestSchema(context: HttpContext) {
     console.log('TestSchema called');
-    return res.send('Test');
+    return Ok(context, 'test');
+  }
+
+  @HttpType('GET')
+  TestBadRequest(context: HttpContext) {
+    return BadRequest(context, 'bad request');
   }
 
 }
