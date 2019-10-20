@@ -12,9 +12,10 @@ function deleteFolderRecursive(path) {
       }
     });
 
-    console.log(`Deleting directory "${path}"...`);
+    // console.log(`Deleting directory "${path}"...`);
     fs.rmdirSync(path);
   }
 };
 
+console.log('build.js: Removing output directory');
 deleteFolderRecursive('./dist');

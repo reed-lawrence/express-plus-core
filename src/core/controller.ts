@@ -1,17 +1,18 @@
 import { Request, Response } from "express-serve-static-core";
 import "reflect-metadata";
 import { IHttpTypeParameters } from "./decorations/http-type";
+import { Utils } from "./utils";
 
-export interface IApiController {
+export interface IApiController<T> {
   routePrefix: string;
-  endpoints: IApiEndpoint[];
+  endpoints: IApiEndpoint<T>[];
 }
 
-export class ApiController implements IApiController {
+export class ApiController<T> implements IApiController<T> {
   routePrefix: string;
-  endpoints: ApiEndpoint[];
+  endpoints: ApiEndpoint<T>[];
   default(req: Request<string[]>, res: Response) {
-
+    return res.send();
   }
 
   constructor(routePrefix?: string) {
@@ -26,12 +27,21 @@ export class ApiController implements IApiController {
       if (key.indexOf('endpoint:') !== -1 && (keyVal.type === 'GET' || keyVal.type === 'POST' || keyVal.type === 'PUT' || keyVal.type === 'DELETE')) {
         const fnName = key.split('endpoint:')[1];
         this.endpoints.push(new ApiEndpoint({
-          route: fnName,
+          route: keyVal.options && keyVal.options.route ? keyVal.options.route : fnName,
           fn: this[fnName as Extract<keyof this, string>] as any,
           type: keyVal.type,
-          bodyType: keyVal.fromBody
+          bodyType: keyVal.options ? keyVal.options.fromBody : undefined
         }));
       }
+    }
+
+    if (this['default']) {
+      this.endpoints.push(new ApiEndpoint<T>({
+        route: '',
+        fn: this['default'],
+        type: 'GET',
+        bodyType: undefined
+      }));
     }
 
     console.log(this);
@@ -51,20 +61,20 @@ export class ApiController implements IApiController {
   }
 }
 
-export interface IApiEndpoint {
+export interface IApiEndpoint<T> {
   route: string;
   type: 'GET' | 'POST' | 'PUT' | 'DELETE';
   fn: (req: Request<string[]>, res: Response) => any;
-  bodyType?: { new(): ObjectConstructor } | undefined;
+  bodyType?: { new(): T } | T | undefined;
 }
 
-export class ApiEndpoint implements IApiEndpoint {
+export class ApiEndpoint<T> implements IApiEndpoint<T> {
   route: string;
   type: 'GET' | 'POST' | 'PUT' | 'DELETE';
   fn: (req: Request<string[]>, res: Response) => any;
-  bodyType?: { new(): ObjectConstructor } | undefined;
+  bodyType?: { new(): T } | T | undefined;
 
-  constructor(init?: IApiEndpoint) {
+  constructor(init?: IApiEndpoint<T>) {
     this.route = init ? init.route : '';
     this.type = init ? init.type : 'GET';
     this.fn = init ? init.fn : () => { return; };

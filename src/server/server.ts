@@ -20,16 +20,12 @@ export class Server {
     const controller = new HelloWorldController();
     this.registerControllers(controller);
 
-    // this.app.use((vars) => {
-    //   console.log(vars.);
-    // });
-
     this.app.listen(environment.PORT, () => {
       console.log('Listening on port ' + environment.PORT);
     });
   }
 
-  private static registerControllers(...controllers: ApiController[]) {
+  private static registerControllers<T>(...controllers: ApiController<T>[]) {
     for (const controller of controllers) {
       for (const endpoint of controller.endpoints) {
         const route = '/' + controller.routePrefix + '/' + endpoint.route;
