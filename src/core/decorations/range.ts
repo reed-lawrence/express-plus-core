@@ -1,3 +1,5 @@
+import "reflect-metadata";
+
 export interface RangeOptions {
   start: number;
   end: number;

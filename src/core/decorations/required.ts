@@ -1,3 +1,5 @@
+import "reflect-metadata";
+
 export const requiredMetaKey = 'datatype:required:';
 
 export function Required() {

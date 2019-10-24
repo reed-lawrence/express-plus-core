@@ -1,20 +1,20 @@
-import { Request, Response, Dictionary } from "express-serve-static-core";
 import "reflect-metadata";
-import { IHttpTypeParameters } from "./decorations/http-type";
-import { Utils } from "./utils";
 import { HttpContext } from "./http-context";
 import { Ok } from "./return-types";
+import { ApiEndpoint, IApiEndpoint } from "./api-endpoint";
+import { IHttpTypeParameters } from './decorations/http-types/http-type-parameters';
+import { HttpRequestType } from "./decorations/http-types/http-request-type.enum";
 
 export interface IApiController<T> {
   routePrefix: string;
   endpoints: IApiEndpoint<T>[];
-  default: (context: HttpContext) => Response;
+  default: (context: HttpContext) => any;
 }
 
 export class ApiController<T> implements IApiController<T> {
   routePrefix: string;
   endpoints: ApiEndpoint<T>[];
-  default(context: HttpContext) {
+  async default(context: HttpContext) {
     return Ok(context);
   }
 
@@ -27,13 +27,13 @@ export class ApiController<T> implements IApiController<T> {
     // console.log(metadataKeys);
     for (const key of metadataKeys) {
       const keyVal: IHttpTypeParameters<any> = Reflect.getMetadata(key, this);
-      if (key.indexOf('endpoint:') !== -1 && (keyVal.type === 'GET' || keyVal.type === 'POST' || keyVal.type === 'PUT' || keyVal.type === 'DELETE')) {
+      if (key.indexOf('endpoint:') !== -1 && keyVal.type) {
         const fnName = key.split('endpoint:')[1];
         this.endpoints.push(new ApiEndpoint({
           route: keyVal.options && keyVal.options.route ? keyVal.options.route : fnName,
           fn: this[fnName as Extract<keyof this, string>] as any,
           type: keyVal.type,
-          bodyType: keyVal.options ? keyVal.options.fromBody : undefined
+          options: keyVal.options ? keyVal.options : undefined
         }));
       }
     }
@@ -42,8 +42,7 @@ export class ApiController<T> implements IApiController<T> {
       this.endpoints.push(new ApiEndpoint<T>({
         route: '',
         fn: this['default'],
-        type: 'GET',
-        bodyType: undefined
+        type: HttpRequestType.GET
       }));
     }
 
@@ -61,26 +60,5 @@ export class ApiController<T> implements IApiController<T> {
     } else {
       throw new Error('Invalid Controller Name');
     }
-  }
-}
-
-export interface IApiEndpoint<T> {
-  route: string;
-  type: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  fn: (context: HttpContext) => any;
-  bodyType?: { new(): T } | T | undefined;
-}
-
-export class ApiEndpoint<T> implements IApiEndpoint<T> {
-  route: string;
-  type: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  fn: (context: HttpContext) => any;
-  bodyType?: { new(): T } | T | undefined;
-
-  constructor(init?: IApiEndpoint<T>) {
-    this.route = init ? init.route : '';
-    this.type = init ? init.type : 'GET';
-    this.fn = init ? init.fn : () => { return; };
-    this.bodyType = init && init.bodyType ? init.bodyType : undefined;
   }
 }

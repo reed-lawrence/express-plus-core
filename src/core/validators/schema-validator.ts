@@ -11,6 +11,10 @@ export class SchemaValidator {
   public static ValidateBody<T extends Object>(req: Request<Dictionary<string>>, classRef: { new(): T } | T) {
     console.log(typeof classRef);
     const obj = classRef instanceof Function ? new classRef() : classRef;
+    if (req.headers["content-type"] !== 'application/json') {
+      throw new Error('Expected Content-Type header of application/json');
+    }
+
     if (typeof req.body !== typeof obj) {
       throw new Error('Incompatible body types')
     }
@@ -18,6 +22,7 @@ export class SchemaValidator {
     if (schemaErrors.missing.length || schemaErrors.invalid.length) {
       throw new Error(this.schemaErrorsToString(schemaErrors));
     }
+    return;
   }
 
   private static validateSchema<T extends Object>(body: any, obj: T): ISchemaErrors {

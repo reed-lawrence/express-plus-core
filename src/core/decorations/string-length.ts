@@ -1,3 +1,5 @@
+import "reflect-metadata";
+
 export interface StringLegnthOptions {
   min: number;
   max: number;
