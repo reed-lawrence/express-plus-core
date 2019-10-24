@@ -1,9 +1,8 @@
 import "reflect-metadata";
-
-export const emailMetaKey = 'datatype:email:';
+import { MetadataKeys } from "../metadata-keys";
 
 export function EmailAddress() {
   return (target: Object, propertyKey: string) => {
-    Reflect.defineMetadata(emailMetaKey + propertyKey, undefined, target);
+    Reflect.defineMetadata(MetadataKeys.email + propertyKey, undefined, target);
   }
 }

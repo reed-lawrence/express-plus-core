@@ -1,7 +1,5 @@
-import { EmailAddress } from "../core/decorations/email-address";
-import { Range } from '../core/decorations/range';
-import { StringLength } from "../core/decorations/string-length";
-import { Required } from "../core/decorations/required";
+import { Required } from '../core/decorations/required';
+import { StringLength } from '../core/decorations/string-length';
 
 export interface IExampleObject {
   id: number;

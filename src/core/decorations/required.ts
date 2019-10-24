@@ -1,9 +1,8 @@
 import "reflect-metadata";
-
-export const requiredMetaKey = 'datatype:required:';
+import { MetadataKeys } from '../metadata-keys';
 
 export function Required() {
   return (target: Object, propertyKey: string) => {
-    Reflect.defineMetadata(requiredMetaKey + propertyKey, undefined, target);
+    Reflect.defineMetadata(MetadataKeys.required + propertyKey, undefined, target);
   }
 }

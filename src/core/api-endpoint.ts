@@ -1,6 +1,7 @@
 import { HttpContext } from "./http-context";
 import { IHttpPostOptions } from "./decorations/http-types/http-post";
 import { HttpRequestType } from "./decorations/http-types/http-request-type.enum";
+import { Utils } from "./utils";
 
 
 export interface IHttpEndpointOptions {
@@ -12,25 +13,25 @@ export class HttpEndpointOptions implements IHttpEndpointOptions {
 
   constructor(init?: IHttpEndpointOptions) {
     if (init) {
-      this.route = init.route || undefined;
+      this.route = init.route ? Utils.trimRoute(init.route) : undefined;
     }
   }
 }
 
-export interface IApiEndpoint<T> {
+export interface IApiEndpoint {
   route: string;
   type: HttpRequestType;
   fn: (context: HttpContext) => any;
-  options?: IHttpEndpointOptions | IHttpPostOptions<T>;
+  options?: IHttpEndpointOptions | IHttpPostOptions;
 }
 
-export class ApiEndpoint<T> implements IApiEndpoint<T> {
+export class ApiEndpoint implements IApiEndpoint {
   route: string;
   type: HttpRequestType;
   fn: (context: HttpContext) => any;
-  options?: IHttpEndpointOptions | IHttpPostOptions<T>;
+  options?: IHttpEndpointOptions | IHttpPostOptions;
 
-  constructor(init?: IApiEndpoint<T>) {
+  constructor(init?: IApiEndpoint) {
     this.route = init ? init.route : '';
     this.type = init ? init.type : HttpRequestType.GET;
     this.fn = init ? init.fn : () => { return; };

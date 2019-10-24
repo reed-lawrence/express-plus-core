@@ -1,20 +1,22 @@
+import 'reflect-metadata';
+
 import express from 'express';
+import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import multer from 'multer';
-import { environment } from '../environments/environment';
-import { Dictionary, NextFunction } from 'express-serve-static-core';
-import { HelloWorldController } from './controllers/hello-world.controller';
-import { ApiController, IApiController } from '../core/controller';
-import { Request, Response } from "express-serve-static-core";
-import "reflect-metadata";
-import { SchemaValidator } from '../core/validators/schema-validator';
-import { HttpContext } from '../core/http-context';
-import { HttpRequestType } from '../core/decorations/http-types/http-request-type.enum';
-import { HttpPostOptions } from '../core/decorations/http-types/http-post';
+
 import { ApiEndpoint } from '../core/api-endpoint';
+import { ApiController } from '../core/controller';
 import { HttpContentType } from '../core/decorations/http-types/http-content-type.enum';
+import { HttpPostOptions } from '../core/decorations/http-types/http-post';
+import { HttpRequestType } from '../core/decorations/http-types/http-request-type.enum';
+import { HttpContext } from '../core/http-context';
+import { Utils } from '../core/utils';
+import { SchemaValidator } from '../core/validators/schema-validator';
+import { environment } from '../environments/environment';
 
 export interface IServerOptions {
-  controllers: { new(): ApiController<any> }[]
+  controllers: Array<(new () => ApiController)>;
+  routePrefix?: string;
 }
 
 export class Server {
@@ -24,12 +26,19 @@ export class Server {
   // Multipart/form-data
   private multer = multer();
 
-  private controllers: ApiController<any>[] = [];
+  private controllers: ApiController[] = [];
+  private routePrefix?: string;
 
   constructor(options?: IServerOptions) {
-    if (options && options.controllers) {
-      for (const controllerConst of options.controllers) {
-        this.controllers.push(new controllerConst());
+    if (options) {
+      if (options.controllers) {
+        for (const controllerConst of options.controllers) {
+          this.controllers.push(new controllerConst());
+        }
+      }
+
+      if (options.routePrefix) {
+        this.routePrefix = Utils.trimRoute(options.routePrefix);
       }
     }
   }
@@ -45,16 +54,16 @@ export class Server {
     });
   }
 
-  private registerControllers<T>(controllers: ApiController<T>[]) {
+  private registerControllers(controllers: ApiController[]) {
     for (const controller of controllers) {
       for (const endpoint of controller.endpoints) {
-        const route = '/' + controller.routePrefix + '/' + endpoint.route;
+        const route = '/' + controller.getRoute() + '/' + endpoint.route;
         if (endpoint.type === HttpRequestType.GET) {
-          console.log('endpoint added at: ' + route);
+          console.log("endpoint added at: " + route);
           const contextFn = (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
             const context = new HttpContext(req, res, next);
             endpoint.fn(context);
-          }
+          };
           this.app.get(route, contextFn);
         } else if (endpoint.type === HttpRequestType.POST) {
           const validationFn = (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
@@ -62,20 +71,18 @@ export class Server {
             if (endpoint.options instanceof HttpPostOptions && endpoint.options.fromBody) {
               SchemaValidator.ValidateBody(req, endpoint.options.fromBody);
             }
-            endpoint.fn(context)
-          }
+            endpoint.fn(context);
+          };
 
           const formatMiddleware = this.getMiddleware(endpoint);
-          console.log('endpoint added at: ' + route);
+          console.dir("endpoint added at: " + route);
           this.app.post(route, formatMiddleware, validationFn);
-
-
         }
       }
     }
   }
 
-  private getMiddleware<T>(endpoint: ApiEndpoint<T>) {
+  private getMiddleware(endpoint: ApiEndpoint) {
     let formatMiddleware: express.RequestHandler = express.json();
     if (endpoint.options) {
       if (endpoint.options instanceof HttpPostOptions && endpoint.options.contentType) {
@@ -93,4 +100,3 @@ export class Server {
     return formatMiddleware;
   }
 }
-

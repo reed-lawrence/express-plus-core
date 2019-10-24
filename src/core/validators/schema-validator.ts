@@ -1,10 +1,10 @@
 import { Request, Dictionary } from "express-serve-static-core";
 import "reflect-metadata";
 import { Utils } from "../utils";
-import { emailMetaKey } from "../decorations/email-address";
-import { rangeMetaKey, RangeValidator } from "../decorations/range";
-import { StringLengthValidator, stringLengthMetaKey } from "../decorations/string-length";
-import { requiredMetaKey } from "../decorations/required";
+import { RangeValidator } from "../decorations/range";
+import { StringLengthValidator } from "../decorations/string-length";
+import { MetadataKeys } from "../metadata-keys";
+
 
 
 export class SchemaValidator {
@@ -34,7 +34,7 @@ export class SchemaValidator {
 
 
     const metadataKeys: string[] = Reflect.getMetadataKeys(obj).sort((a, b) => {
-      return a.indexOf(requiredMetaKey) !== -1 ? -1 : 1;
+      return a.indexOf(MetadataKeys.required) !== -1 ? -1 : 1;
     });
     for (const metaKey of metadataKeys) {
 
@@ -42,19 +42,19 @@ export class SchemaValidator {
       const paramValue = Reflect.getMetadata(metaKey, obj);
       const key = Utils.getKey(paramName, body);
 
-      if (metaKey.indexOf(requiredMetaKey) !== -1) {
+      if (metaKey.indexOf(MetadataKeys.required) !== -1) {
         if (key && !this.ValidateRequired(body[key])) {
           throw new Error('Invalid format parameter [' + paramName + '] was not supplied');
         }
-      } else if (metaKey.indexOf(emailMetaKey) !== -1) {
+      } else if (metaKey.indexOf(MetadataKeys.email) !== -1) {
         if (key && !this.validateEmail(body[key] as any)) {
           invalidParams.push('Invalid format [Email] on ' + paramName);
         }
-      } else if (metaKey.indexOf(rangeMetaKey) !== -1) {
+      } else if (metaKey.indexOf(MetadataKeys.range) !== -1) {
         if (key && !this.ValidateRange(body[key], paramValue)) {
           invalidParams.push('Invalid format [Range] on ' + paramName);
         }
-      } else if (metaKey.indexOf(stringLengthMetaKey) !== -1) {
+      } else if (metaKey.indexOf(MetadataKeys.strLength) !== -1) {
         if (key && !this.ValidateStringLength(body[key], paramValue)) {
           invalidParams.push('Invalid format [StringLength] on ' + paramName);
         }
