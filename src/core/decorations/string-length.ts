@@ -1,16 +1,15 @@
 import "reflect-metadata";
 import { MetadataKeys } from "../metadata-keys";
 
-export interface StringLegnthOptions {
+export interface IStringLegnthOptions {
   min: number;
   max: number;
 }
 
-
-export type StringLengthValidator = StringLegnthOptions | ((length: number) => boolean);
+export type StringLengthValidator = IStringLegnthOptions | ((length: number) => boolean);
 
 export function StringLength(opts: StringLengthValidator) {
-  return (target: Object, propertyKey: string) => {
+  return (target: object, propertyKey: string) => {
     Reflect.defineMetadata(MetadataKeys.strLength + propertyKey, opts, target);
-  }
+  };
 }

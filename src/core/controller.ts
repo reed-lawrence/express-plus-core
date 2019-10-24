@@ -1,12 +1,11 @@
 import "reflect-metadata";
-import { HttpContext } from "./http-context";
-import { Ok } from "./return-types";
 import { ApiEndpoint, IApiEndpoint } from "./api-endpoint";
-import { IHttpTypeParameters } from './decorations/http-types/http-type-parameters';
-import { HttpRequestType } from "./decorations/http-types/http-request-type.enum";
-import { MetadataKeys } from "./metadata-keys";
 import { ControllerOptions } from './decorations/controller.decorator';
-
+import { HttpRequestType } from "./decorations/http-types/http-request-type.enum";
+import { IHttpTypeParameters } from './decorations/http-types/http-type-parameters';
+import { HttpContext } from "./http-context";
+import { MetadataKeys } from "./metadata-keys";
+import { Ok } from "./return-types";
 
 export interface IApiController {
   readonly endpoints: IApiEndpoint[];
@@ -14,10 +13,7 @@ export interface IApiController {
 }
 
 export class ApiController implements IApiController {
-  readonly endpoints: ApiEndpoint[];
-  async default(context: HttpContext) {
-    return Ok(context);
-  }
+  public readonly endpoints: ApiEndpoint[];
 
   constructor() {
     // console.log('ControllerConstructor called');
@@ -30,23 +26,26 @@ export class ApiController implements IApiController {
       if (key.indexOf('endpoint:') !== -1 && keyVal.type) {
         const fnName = key.split('endpoint:')[1];
         this.endpoints.push(new ApiEndpoint({
-          route: keyVal.options && keyVal.options.route ? keyVal.options.route : fnName,
           fn: this[fnName as Extract<keyof this, string>] as any,
+          options: keyVal.options ? keyVal.options : undefined,
+          route: keyVal.options && keyVal.options.route ? keyVal.options.route : fnName,
           type: keyVal.type,
-          options: keyVal.options ? keyVal.options : undefined
         }));
       }
     }
 
-    if (this['default']) {
+    if (this.default) {
       this.endpoints.push(new ApiEndpoint({
+        fn: this.default,
         route: '',
-        fn: this['default'],
-        type: HttpRequestType.GET
+        type: HttpRequestType.GET,
       }));
     }
 
     console.log(this);
+  }
+  public async default(context: HttpContext) {
+    return Ok(context);
   }
 
   public getRoute(): string {

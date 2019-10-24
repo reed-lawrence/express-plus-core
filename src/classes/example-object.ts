@@ -8,26 +8,26 @@ export interface IExampleObject {
 }
 
 export interface ISubObject {
-  id: number,
+  id: number;
   subvalue: string;
 }
 
 export class ExampleObject implements IExampleObject {
-  id: number;
+  public id: number;
 
   @Required()
   @StringLength({ min: 1, max: 5 })
-  value: string;
+  public value: string;
 
-  @StringLength(length => length >= 5 && length <= 10)
-  value2: string;
+  @StringLength((length) => length >= 5 && length <= 10)
+  public value2: string;
 
-  subobject: ISubObject;
+  public subobject: ISubObject;
 
   constructor(init?: IExampleObject) {
     this.id = init ? init.id : 0;
     this.value = init ? init.value : '';
     this.value2 = init ? init.value2 : '';
-    this.subobject = { id: 0, subvalue: '' }
+    this.subobject = { id: 0, subvalue: '' };
   }
 }

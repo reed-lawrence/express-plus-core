@@ -1,14 +1,12 @@
-import { Request, Dictionary } from "express-serve-static-core";
+import { Dictionary, Request } from "express-serve-static-core";
 import "reflect-metadata";
-import { Utils } from "../utils";
 import { RangeValidator } from "../decorations/range";
 import { StringLengthValidator } from "../decorations/string-length";
 import { MetadataKeys } from "../metadata-keys";
-
-
+import { Utils } from "../utils";
 
 export class SchemaValidator {
-  public static ValidateBody<T extends Object>(req: Request<Dictionary<string>>, classRef: { new(): T } | T) {
+  public static ValidateBody<T extends object>(req: Request<Dictionary<string>>, classRef: (new () => T) | T) {
     console.log(typeof classRef);
     const obj = classRef instanceof Function ? new classRef() : classRef;
     if (req.headers["content-type"] !== 'application/json') {
@@ -16,7 +14,7 @@ export class SchemaValidator {
     }
 
     if (typeof req.body !== typeof obj) {
-      throw new Error('Incompatible body types')
+      throw new Error('Incompatible body types');
     }
     const schemaErrors = this.validateSchema(req.body, obj);
     if (schemaErrors.missing.length || schemaErrors.invalid.length) {
@@ -25,13 +23,12 @@ export class SchemaValidator {
     return;
   }
 
-  private static validateSchema<T extends Object>(body: any, obj: T): ISchemaErrors {
+  private static validateSchema<T extends object>(body: any, obj: T): ISchemaErrors {
     console.log(obj);
     const missingParams: string[] = [];
     const invalidParams: string[] = [];
 
     this.validateObjects(body, obj);
-
 
     const metadataKeys: string[] = Reflect.getMetadataKeys(obj).sort((a, b) => {
       return a.indexOf(MetadataKeys.required) !== -1 ? -1 : 1;
@@ -123,15 +120,20 @@ export class SchemaValidator {
     return value ? true : false;
   }
 
-  private static validateObjects<T extends Object>(target: any, model: T, targetParamName?: string) {
+  private static validateObjects<T extends object>(target: any, model: T, targetParamName?: string) {
     for (const key in model) {
-      if (target === null) {
-        throw new Error('Invalid schema error: Object expected, recieved null' + (' at: ' + targetParamName) || '');
-      }
-      if (!target.hasOwnProperty(key)) {
-        throw new Error('Missing/undefined property in payload: ' + (targetParamName ? targetParamName + '.' + key : key));
-      } else if (model[key] instanceof Object) {
-        this.validateObjects(target[key], model[key], targetParamName ? targetParamName + '.' + key : key);
+      if (model.hasOwnProperty(key)) {
+        if (target === null) {
+          throw new Error('Invalid schema error: Object expected, recieved null' + (' at: ' + targetParamName) || '');
+        }
+        if (!target.hasOwnProperty(key)) {
+          throw new Error('Missing/undefined property in payload: ' +
+            (targetParamName ? targetParamName + '.' + key : key));
+        } else if (model[key] instanceof Object) {
+          this.validateObjects<any>(target[key], model[key], targetParamName ? targetParamName + '.' + key : key);
+        }
+      } else {
+        throw new Error('Property does not correspond to key in model');
       }
     }
   }

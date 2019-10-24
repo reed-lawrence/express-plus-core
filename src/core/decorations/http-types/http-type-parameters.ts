@@ -1,6 +1,6 @@
-import { HttpEndpointOptions } from "../../api-endpoint";
+import { HttpEndpointOptions } from '../../http-endpoint-options';
+import { HttpPostOptions } from './http-post';
 import { HttpRequestType } from './http-request-type.enum';
-import { HttpPostOptions } from "./http-post";
 
 export interface IHttpTypeParameters {
   type: HttpRequestType;

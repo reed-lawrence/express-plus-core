@@ -1,13 +1,14 @@
 import 'reflect-metadata';
-import { ApiController } from "../../controller";
-import { IHttpEndpointOptions, HttpEndpointOptions } from '../../api-endpoint';
-import { IHttpTypeParameters } from "./http-type-parameters";
-import { HttpRequestType } from "./http-request-type.enum";
+
+import { ApiController } from '../../controller';
+import { HttpEndpointOptions, IHttpEndpointOptions } from '../../http-endpoint-options';
 import { MetadataKeys } from '../../metadata-keys';
+import { HttpRequestType } from './http-request-type.enum';
+import { IHttpTypeParameters } from './http-type-parameters';
 
 export function HttpGet(options?: IHttpEndpointOptions) {
-  return function (target: ApiController, propertyKey: string, descriptor: PropertyDescriptor) {
-    const params: IHttpTypeParameters = { type: HttpRequestType.GET, options: new HttpEndpointOptions(options) }
+  return (target: ApiController, propertyKey: string, descriptor: PropertyDescriptor) => {
+    const params: IHttpTypeParameters = { type: HttpRequestType.GET, options: new HttpEndpointOptions(options) };
     Reflect.defineMetadata(MetadataKeys.endpoint + propertyKey, params, target);
-  }
+  };
 }

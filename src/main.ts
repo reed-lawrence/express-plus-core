@@ -1,12 +1,12 @@
 import "reflect-metadata";
 
-import { Server } from "./server/server";
 import { HelloWorldController } from "./server/controllers/hello-world.controller";
+import { Server } from "./core/server";
 
 const server = new Server(
   {
     controllers: [
-      HelloWorldController
+      HelloWorldController,
     ],
   });
 

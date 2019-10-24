@@ -1,19 +1,20 @@
 import 'reflect-metadata';
-import { HttpContentType } from "./http-content-type.enum";
-import { IHttpEndpointOptions, HttpEndpointOptions } from "../../api-endpoint";
-import { ApiController } from "../../controller";
-import { IHttpTypeParameters } from './http-type-parameters';
-import { HttpRequestType } from './http-request-type.enum';
+
+import { ApiController } from '../../controller';
+import { HttpEndpointOptions, IHttpEndpointOptions } from '../../http-endpoint-options';
 import { MetadataKeys } from '../../metadata-keys';
+import { HttpContentType } from './http-content-type.enum';
+import { HttpRequestType } from './http-request-type.enum';
+import { IHttpTypeParameters } from './http-type-parameters';
 
 export interface IHttpPostOptions extends IHttpEndpointOptions {
-  fromBody?: { new(): any } | Object;
+  fromBody?: (new () => any) | object;
   contentType?: HttpContentType;
 }
 
 export class HttpPostOptions extends HttpEndpointOptions implements IHttpPostOptions {
-  fromBody?: { new(): any } | Object;
-  contentType?: HttpContentType;
+  public fromBody?: (new () => any) | object;
+  public contentType?: HttpContentType;
 
   constructor(init?: IHttpPostOptions) {
     super(init);
@@ -25,8 +26,8 @@ export class HttpPostOptions extends HttpEndpointOptions implements IHttpPostOpt
 }
 
 export function HttpPost(options?: IHttpPostOptions) {
-  return function (target: ApiController, propertyKey: string, descriptor: PropertyDescriptor) {
+  return (target: ApiController, propertyKey: string, descriptor: PropertyDescriptor) => {
     const params: IHttpTypeParameters = { type: HttpRequestType.POST, options: new HttpPostOptions(options) };
     Reflect.defineMetadata(MetadataKeys.endpoint + propertyKey, params, target);
-  }
+  };
 }

@@ -1,8 +1,6 @@
 import 'reflect-metadata';
+
 import { ApiController } from '../controller';
-import { IHttpTypeParameters } from './http-types/http-type-parameters';
-import { HttpRequestType } from './http-types/http-request-type.enum';
-import { HttpEndpointOptions } from '../api-endpoint';
 import { MetadataKeys } from '../metadata-keys';
 import { Utils } from '../utils';
 
@@ -11,7 +9,7 @@ export interface IControllerOptions {
 }
 
 export class ControllerOptions implements IControllerOptions {
-  route?: string;
+  public route?: string;
 
   constructor(init?: IControllerOptions) {
     if (init) {
@@ -35,11 +33,11 @@ export function Controller(options?: IControllerOptions) {
   //   const params = new ControllerOptions(options);
   //   Reflect.defineMetadata(MetadataKeys.controller + propertyKey, params, target);
   // }
-  return function (constructor: { new(): ApiController }) {
+  return (constructor: new () => ApiController) => {
     console.log('@Controller return fn invoked');
     const params = new ControllerOptions(options);
     console.dir(constructor);
     Reflect.defineMetadata(MetadataKeys.controller + constructor.name, params, constructor.prototype);
     console.dir(Reflect.getMetadataKeys(constructor.prototype));
-  }
+  };
 }

@@ -7,7 +7,7 @@ import { HttpPost } from '../../core/decorations/http-types/http-post';
 import { HttpContext } from '../../core/http-context';
 import { BadRequest, Ok } from '../../core/return-types';
 
-@Controller({ route: 'TestRoute/Test' })
+@Controller()
 export class HelloWorldController extends ApiController {
 
   constructor() {
