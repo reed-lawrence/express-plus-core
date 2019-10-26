@@ -1,14 +1,15 @@
+import { Response } from 'express-serve-static-core';
 import { HttpContext } from '../core/http-context';
+import { ApplicationError } from './error-handling/application-error';
 
-export function ServerError(context: HttpContext, params?: { err?: Error; body?: unknown }) {
-  context.response.status(500).send(params && params.body ? params.body : 'Internal Server Error');
-  return context.next(params && params.err ? params.err : new Error('Internal Server Error'));
+export function Ok(res: Response, body?: unknown) {
+  return res.status(200).send(body);
 }
 
-export function BadRequest(context: HttpContext, body?: unknown) {
-  return context.response.status(400).send(body);
+export function Created(res: Response, body?: unknown) {
+  return res.status(201).send(body);
 }
 
-export function Ok(context: HttpContext, body?: unknown) {
-  return context.response.send(body);
+export function NoContent(res: Response) {
+  return res.status(204).send();
 }

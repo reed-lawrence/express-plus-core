@@ -44,8 +44,8 @@ export class ApiController implements IApiController {
 
     console.log(this);
   }
-  public async default(context: HttpContext) {
-    return Ok(context);
+  public async default({ req, res }: HttpContext) {
+    return Ok(res);
   }
 
   public getRoute(): string {

@@ -4,9 +4,9 @@ import { Controller } from '../../core/decorations/controller.decorator';
 import { HttpContentType } from '../../core/decorations/http-types/http-content-type.enum';
 import { HttpGet } from '../../core/decorations/http-types/http-get';
 import { HttpPost } from '../../core/decorations/http-types/http-post';
-import { HttpContext } from '../../core/http-context';
-import { BadRequest, Ok } from '../../core/return-types';
 import { ApplicationError } from '../../core/error-handling/application-error';
+import { HttpContext } from '../../core/http-context';
+import { Ok } from '../../core/return-types';
 
 @Controller()
 export class HelloWorldController extends ApiController {
@@ -15,26 +15,31 @@ export class HelloWorldController extends ApiController {
     super();
   }
 
-  @HttpGet({ route: 'test2/:id' })
-  public async test(context: HttpContext) {
-    return Ok(context, 'Hello World Test: ' + (context.request.params as any).id);
+  @HttpGet({ route: 'test2/:id/:value?' })
+  public async test({ req, res }: HttpContext) {
+    return Ok(res, req.params);
   }
 
   @HttpPost({ fromBody: ExampleObject })
-  public async TestSchema(context: HttpContext) {
+  public async TestSchema({ req, res }: HttpContext) {
     console.log('TestSchema called');
-    return Ok(context, 'test');
+    return Ok(res, 'test');
   }
 
   @HttpGet()
-  public async TestBadRequest(context: HttpContext) {
+  public async TestBadRequest({ req, res }: HttpContext) {
     throw new ApplicationError('Unauthorized', 401);
   }
 
-  @HttpPost({ contentType: HttpContentType.UrlEncoded })
-  public async TestFormData(context: HttpContext) {
-    console.dir(context.request);
-    return Ok(context, 'test');
+  @HttpPost({ contentType: HttpContentType.UrlEncoded, authenticate: true })
+  public async TestFormData({ req, res }: HttpContext) {
+    console.dir(req);
+    return Ok(res, 'test');
+  }
+
+  @HttpGet({ authenticate: true })
+  public async TestAuth({ req, res }: HttpContext) {
+    return Ok(res, res.locals);
   }
 
 }

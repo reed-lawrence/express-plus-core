@@ -1,5 +1,5 @@
-import { ApplicationError } from "./application-error";
 import { Utils } from "../utils";
+import { ApplicationError } from "./application-error";
 
 export interface IDefaultErrorResponse {
   message: string;
@@ -8,9 +8,9 @@ export interface IDefaultErrorResponse {
 }
 
 export class DefaultErrorResponse implements IDefaultErrorResponse {
-  name: string;
-  message: string;
-  status: number;
+  public name: string;
+  public message: string;
+  public status: number;
 
   constructor(init?: Partial<Error | ApplicationError>) {
     this.name = init && init.name && init.name !== 'Error' ? init.name : 'ApplicationError';

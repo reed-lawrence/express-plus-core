@@ -127,7 +127,10 @@ export class SchemaValidator {
     return value ? true : false;
   }
 
-  private static validateObjects<T extends object>(target: any, model: T, targetParamName?: string): string | undefined {
+  private static validateObjects<T extends object>(
+    target: any,
+    model: T,
+    targetParamName?: string): string | undefined {
     for (const key in model) {
       if (model.hasOwnProperty(key)) {
         if (target === null) {
@@ -137,7 +140,8 @@ export class SchemaValidator {
           return 'Missing/undefined property in payload: ' +
             (targetParamName ? targetParamName + '.' + key : key);
         } else if (model[key] instanceof Object) {
-          return this.validateObjects<any>(target[key], model[key], targetParamName ? targetParamName + '.' + key : key);
+          return this.validateObjects<any>(target[key], model[key],
+            targetParamName ? targetParamName + '.' + key : key);
         }
       } else {
         return 'Property does not correspond to key in model';

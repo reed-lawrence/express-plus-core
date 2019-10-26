@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 
 import { ApiController } from '../../controller';
-import { HttpEndpointOptions, IHttpEndpointOptions } from '../../http-endpoint-options';
 import { MetadataKeys } from '../../metadata-keys';
 import { HttpContentType } from './http-content-type.enum';
+import { HttpEndpointOptions, IHttpEndpointOptions } from './http-endpoint-options';
 import { HttpRequestType } from './http-request-type.enum';
 import { IHttpTypeParameters } from './http-type-parameters';
 

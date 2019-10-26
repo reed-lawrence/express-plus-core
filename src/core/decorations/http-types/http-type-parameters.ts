@@ -1,4 +1,4 @@
-import { HttpEndpointOptions } from '../../http-endpoint-options';
+import { HttpEndpointOptions } from './http-endpoint-options';
 import { HttpPostOptions } from './http-post';
 import { HttpRequestType } from './http-request-type.enum';
 
