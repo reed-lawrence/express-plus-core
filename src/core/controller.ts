@@ -9,7 +9,7 @@ import { Ok } from "./return-types";
 
 export interface IApiController {
   readonly endpoints: IApiEndpoint[];
-  default: (context: HttpContext) => any;
+  default: (context: HttpContext) => Promise<any>;
 }
 
 export class ApiController implements IApiController {

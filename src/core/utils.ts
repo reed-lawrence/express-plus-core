@@ -17,4 +17,14 @@ export class Utils {
     }
     return output;
   }
+
+  public static assign(target: any, from: any) {
+    for (const targetKey in target) {
+      for (const fromKey in from) {
+        if (targetKey === fromKey) {
+          target[targetKey] = from[fromKey];
+        }
+      }
+    }
+  }
 }

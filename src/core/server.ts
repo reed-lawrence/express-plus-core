@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import multer from 'multer';
 
@@ -14,10 +14,14 @@ import { Utils } from './utils';
 import { SchemaValidator } from './validators/schema-validator';
 import { environment } from '../environments/environment';
 import { MetadataKeys } from './metadata-keys';
+import { ApplicationError } from './error-handling/application-error';
+import { DefaultErrorResponse } from './error-handling/default-error-response';
+import { routeMapTemplate } from './html/route-map.html';
 
 export interface IServerOptions {
   controllers: Array<(new () => ApiController)>;
   routePrefix?: string;
+  errorHandler?: (err: any, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
 }
 
 export class Server {
@@ -29,6 +33,13 @@ export class Server {
 
   private controllers: ApiController[] = [];
   private routePrefix?: string;
+  private readonly errorHandler = (err: Error | ApplicationError, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
+    const status = err instanceof ApplicationError ? err.status : 500;
+    res.status(status).send(new DefaultErrorResponse(err));
+    return next(err);
+  }
+  private serverName = 'Express Plus API';
+  private routes = new Array<string>();
 
   constructor(options?: IServerOptions) {
     if (options) {
@@ -41,14 +52,25 @@ export class Server {
       if (options.routePrefix) {
         this.routePrefix = Utils.trimRoute(options.routePrefix);
       }
+
+      if (options.errorHandler) {
+        this.errorHandler = options.errorHandler;
+      }
     }
   }
 
   public start() {
-    this.app.get('/', (req, res) => {
-      res.send('Server is active');
-    });
     this.registerControllers(this.controllers);
+
+    this.app.get('/', (req, res) => {
+      this.routes.sort((a, b) => a > b ? 1 : a < b ? -1 : 0);
+      let routeTable = '';
+      this.routes.forEach(r => routeTable += r + ' <br>');
+      res.send(
+        routeMapTemplate.replace('{{title}}', this.serverName)
+          .replace('{{routeMap}}', routeTable)
+      );
+    });
 
     this.app.listen(environment.PORT, () => {
       console.log('Listening on port ' + environment.PORT);
@@ -61,25 +83,18 @@ export class Server {
 
         for (const endpoint of controller.endpoints) {
           const route = '/' + controller.getRoute() + '/' + endpoint.route;
+
           if (endpoint.type === HttpRequestType.GET) {
             console.log("endpoint added at: " + route);
-            const contextFn = (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
-              const context = new HttpContext(req, res, next);
-              endpoint.fn(context);
-            };
+            this.routes.push(route);
+            const contextFn = this.createContextFn(endpoint);
             this.app.get(route, contextFn);
           } else if (endpoint.type === HttpRequestType.POST) {
-            const validationFn = (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
-              const context = new HttpContext(req, res, next);
-              if (endpoint.options instanceof HttpPostOptions && endpoint.options.fromBody) {
-                SchemaValidator.ValidateBody(req, endpoint.options.fromBody);
-              }
-              endpoint.fn(context);
-            };
-
-            const formatMiddleware = this.getMiddleware(endpoint);
             console.dir("endpoint added at: " + route);
-            this.app.post(route, formatMiddleware, validationFn);
+            this.routes.push(route);
+            const contextFn = this.createContextFn(endpoint);
+            const formatMiddleware = this.getMiddleware(endpoint);
+            this.app.post(route, formatMiddleware, contextFn);
           }
         }
 
@@ -99,6 +114,38 @@ export class Server {
       }
     }
     return false;
+  }
+
+  private createContextFn(endpoint: ApiEndpoint) {
+    return (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
+      const context = new HttpContext(req, res, next);
+
+      // POST
+      if (endpoint.type === HttpRequestType.POST && endpoint.options instanceof HttpPostOptions && endpoint.options.fromBody) {
+        const schemaErrors = SchemaValidator.ValidateBody(req, endpoint.options.fromBody);
+        console.log(schemaErrors);
+        if (schemaErrors) {
+
+          // Schema error handling
+          const err = new Error(schemaErrors);
+          if (endpoint.options.errorHandler) {
+            endpoint.options.errorHandler(err, req, res, next);
+          } else {
+            this.errorHandler(err, req, res, next);
+          }
+
+        }
+      }
+
+      // Pass the context onto the endpoint function and handle the errors accordingly
+      endpoint.fn(context).then(() => next()).catch(err => {
+        if (endpoint.options && endpoint.options.errorHandler) {
+          endpoint.options.errorHandler(err, req, res, next);
+        } else {
+          this.errorHandler(err, req, res, next);
+        }
+      });
+    };
   }
 
   private getMiddleware(endpoint: ApiEndpoint) {

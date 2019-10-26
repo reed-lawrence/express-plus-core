@@ -10,15 +10,15 @@ export class SchemaValidator {
     console.log(typeof classRef);
     const obj = classRef instanceof Function ? new classRef() : classRef;
     if (req.headers["content-type"] !== 'application/json') {
-      throw new Error('Expected Content-Type header of application/json');
+      return 'Expected Content-Type header of application/json';
     }
 
     if (typeof req.body !== typeof obj) {
-      throw new Error('Incompatible body types');
+      return 'Incompatible body types';
     }
     const schemaErrors = this.validateSchema(req.body, obj);
     if (schemaErrors.missing.length || schemaErrors.invalid.length) {
-      throw new Error(this.schemaErrorsToString(schemaErrors));
+      return this.schemaErrorsToString(schemaErrors);
     }
     return;
   }
@@ -28,7 +28,10 @@ export class SchemaValidator {
     const missingParams: string[] = [];
     const invalidParams: string[] = [];
 
-    this.validateObjects(body, obj);
+    const objDiff = this.validateObjects(body, obj);
+    if (objDiff) {
+      missingParams.push(objDiff);
+    }
 
     const metadataKeys: string[] = Reflect.getMetadataKeys(obj).sort((a, b) => {
       return a.indexOf(MetadataKeys.required) !== -1 ? -1 : 1;
@@ -41,7 +44,7 @@ export class SchemaValidator {
 
       if (metaKey.indexOf(MetadataKeys.required) !== -1) {
         if (key && !this.ValidateRequired(body[key])) {
-          throw new Error('Invalid format parameter [' + paramName + '] was not supplied');
+          invalidParams.push('Invalid format parameter [' + paramName + '] was not supplied');
         }
       } else if (metaKey.indexOf(MetadataKeys.email) !== -1) {
         if (key && !this.validateEmail(body[key] as any)) {
@@ -88,7 +91,8 @@ export class SchemaValidator {
     if (!value) {
       return true;
     } else if (typeof value !== 'number') {
-      throw new Error('Value provided for @Range() is not a numeric type.');
+      console.error('Value provided for @Range() is not a numeric type.');
+      return undefined;
     }
 
     if (validator instanceof Function) {
@@ -96,7 +100,8 @@ export class SchemaValidator {
     } else if (validator instanceof Object) {
       return value >= validator.start && value <= validator.end;
     } else {
-      throw new Error('Invalid validator parameters supplied to @Range() decorator');
+      console.error('Invalid validator parameters supplied to @Range() decorator');
+      return undefined;
     }
   }
 
@@ -104,7 +109,8 @@ export class SchemaValidator {
     if (!value) {
       return true;
     } else if (typeof value !== 'string') {
-      throw new Error('Value provided for @StringLength() is not a string type.');
+      console.error('Value provided for @StringLength() is not a string type.');
+      return undefined;
     }
 
     if (validator instanceof Function) {
@@ -112,7 +118,8 @@ export class SchemaValidator {
     } else if (validator instanceof Object) {
       return value.length >= validator.min && value.length <= validator.max;
     } else {
-      throw new Error('Invalid validator parameters supplied to @StringLength() decorator');
+      console.error('Invalid validator parameters supplied to @StringLength() decorator');
+      return undefined;
     }
   }
 
@@ -120,22 +127,23 @@ export class SchemaValidator {
     return value ? true : false;
   }
 
-  private static validateObjects<T extends object>(target: any, model: T, targetParamName?: string) {
+  private static validateObjects<T extends object>(target: any, model: T, targetParamName?: string): string | undefined {
     for (const key in model) {
       if (model.hasOwnProperty(key)) {
         if (target === null) {
-          throw new Error('Invalid schema error: Object expected, recieved null' + (' at: ' + targetParamName) || '');
+          return 'Invalid schema error: Object expected, recieved null' + (' at: ' + targetParamName) || '';
         }
         if (!target.hasOwnProperty(key)) {
-          throw new Error('Missing/undefined property in payload: ' +
-            (targetParamName ? targetParamName + '.' + key : key));
+          return 'Missing/undefined property in payload: ' +
+            (targetParamName ? targetParamName + '.' + key : key);
         } else if (model[key] instanceof Object) {
-          this.validateObjects<any>(target[key], model[key], targetParamName ? targetParamName + '.' + key : key);
+          return this.validateObjects<any>(target[key], model[key], targetParamName ? targetParamName + '.' + key : key);
         }
       } else {
-        throw new Error('Property does not correspond to key in model');
+        return 'Property does not correspond to key in model';
       }
     }
+    return;
   }
 }
 

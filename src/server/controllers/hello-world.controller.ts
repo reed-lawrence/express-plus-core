@@ -6,6 +6,7 @@ import { HttpGet } from '../../core/decorations/http-types/http-get';
 import { HttpPost } from '../../core/decorations/http-types/http-post';
 import { HttpContext } from '../../core/http-context';
 import { BadRequest, Ok } from '../../core/return-types';
+import { ApplicationError } from '../../core/error-handling/application-error';
 
 @Controller()
 export class HelloWorldController extends ApiController {
@@ -27,7 +28,7 @@ export class HelloWorldController extends ApiController {
 
   @HttpGet()
   public async TestBadRequest(context: HttpContext) {
-    return BadRequest(context, 'bad request');
+    throw new ApplicationError('Unauthorized', 401);
   }
 
   @HttpPost({ contentType: HttpContentType.UrlEncoded })

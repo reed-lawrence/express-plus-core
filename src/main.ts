@@ -7,7 +7,7 @@ const server = new Server(
   {
     controllers: [
       HelloWorldController,
-    ],
+    ]
   });
 
 server.start();
