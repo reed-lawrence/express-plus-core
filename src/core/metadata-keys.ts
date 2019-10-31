@@ -5,4 +5,5 @@ export const MetadataKeys = {
   range: 'datatype:range:',
   required: 'datatype:required:',
   strLength: 'datatype:stringlength:',
+  regex: 'datatype:regex'
 };

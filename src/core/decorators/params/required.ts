@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { MetadataKeys } from '../metadata-keys';
+import { MetadataKeys } from '../../metadata-keys';
 
 export function Required() {
   return (target: object, propertyKey: string) => {

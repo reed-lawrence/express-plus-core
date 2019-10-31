@@ -7,9 +7,9 @@ import multer from 'multer';
 import { environment } from '../environments/environment';
 import { ApiEndpoint } from './api-endpoint';
 import { ApiController } from './controller';
-import { HttpContentType } from './decorations/http-types/http-content-type.enum';
-import { HttpPostOptions } from './decorations/http-types/http-post';
-import { HttpRequestType } from './decorations/http-types/http-request-type.enum';
+import { HttpContentType } from './decorators/http-types/http-content-type.enum';
+import { HttpPostOptions } from './decorators/http-types/http-post';
+import { HttpRequestType } from './decorators/http-types/http-request-type.enum';
 import { ApplicationError } from './error-handling/application-error';
 import { DefaultErrorResponse } from './error-handling/default-error-response';
 import { NotFoundError } from './error-handling/not-found-error';
@@ -18,6 +18,7 @@ import { HttpContext } from './http-context';
 import { MetadataKeys } from './metadata-keys';
 import { Utils } from './utils';
 import { SchemaValidator } from './validators/schema-validator';
+import { HttpPutOptions } from './decorators/http-types/http-put';
 
 export interface IServerOptions {
   controllers: Array<(new () => ApiController)>;
@@ -36,7 +37,7 @@ export class Server {
   private controllers: ApiController[] = [];
   private readonly routePrefix?: string;
   private readonly serverName = 'Express Plus API';
-  private routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE', endpoint: ApiEndpoint }>();
+  private routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'HEAD' | 'TRACE' | 'OPTIONS', endpoint: ApiEndpoint }>();
   private readonly authMethod?: (
     req: Request<Dictionary<string>>,
     res: Response,
@@ -73,9 +74,7 @@ export class Server {
       });
     });
 
-    this.app.use((req, res, next) => {
-      this.errorHandler(new NotFoundError(), req, res, next);
-    });
+    this.app.use(this.errorHandler);
 
     this.app.listen(environment.PORT, () => {
       console.log('Listening on port ' + environment.PORT);
@@ -96,18 +95,20 @@ export class Server {
       if (this.hasControllerDecorator(controller)) {
 
         for (const endpoint of controller.endpoints) {
-          const route = '/' + controller.getRoute() + '/' + endpoint.route;
+          const route = `/${controller.getRoute()}/${endpoint.route}`;
 
           const middleware: (express.RequestHandler)[] = new Array();
           if (endpoint.options && endpoint.options.authenticate) {
+
             let authMethod: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<any>;
+
             if (endpoint.options.authMethod) {
               authMethod = endpoint.options.authMethod;
             } else if (this.authMethod) {
               authMethod = this.authMethod;
             } else {
-              throw new Error('Unable to register route. Authenticate was specified in ' +
-                'the controller endpoint, but no authentication method was provided by the server or endpoint');
+              throw new Error(`Unable to register route. Authenticate was specified in the controller endpoint, 
+              but no authentication method was provided by the server or endpoint`);
             }
 
             // Wrapper for unified/customized error handling
@@ -126,14 +127,55 @@ export class Server {
           const contextFn = this.createContextFn(endpoint);
 
           if (endpoint.type === HttpRequestType.GET) {
-            console.log("endpoint added at: " + route);
-            this.routes.push({ route, type: 'GET', endpoint: endpoint });
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'GET', endpoint: endpoint });
             this.app.get(route, middleware, contextFn);
+
           } else if (endpoint.type === HttpRequestType.POST) {
-            console.dir("endpoint added at: " + route);
-            this.routes.push({ route, type: 'POST', endpoint: endpoint });
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'POST', endpoint: endpoint });
             middleware.push(this.getFormatMiddleware(endpoint));
             this.app.post(route, middleware, contextFn);
+
+          } else if (endpoint.type === HttpRequestType.PUT) {
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'PUT', endpoint: endpoint });
+            middleware.push(this.getFormatMiddleware(endpoint));
+            this.app.put(route, middleware, contextFn);
+
+          } else if (endpoint.type === HttpRequestType.DELETE) {
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'DELETE', endpoint: endpoint });
+            this.app.delete(route, middleware, contextFn);
+
+          } else if (endpoint.type === HttpRequestType.CONNECT) {
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'CONNECT', endpoint: endpoint });
+            this.app.connect(route, middleware, contextFn);
+
+          } else if (endpoint.type === HttpRequestType.HEAD) {
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'HEAD', endpoint: endpoint });
+            this.app.head(route, middleware, contextFn);
+
+          } else if (endpoint.type === HttpRequestType.OPTIONS) {
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'OPTIONS', endpoint: endpoint });
+            this.app.options(route, middleware, contextFn);
+
+          } else if (endpoint.type === HttpRequestType.TRACE) {
+
+            console.log(`endpoint added at: ${route}`);
+            this.routes.push({ route: route, type: 'TRACE', endpoint: endpoint });
+            this.app.trace(route, middleware, contextFn);
+
           }
         }
 
@@ -159,9 +201,9 @@ export class Server {
     return (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
       const context = new HttpContext(req, res, next);
 
-      // POST
-      if (endpoint.type === HttpRequestType.POST &&
-        endpoint.options instanceof HttpPostOptions &&
+      // POST & PUT
+      if ((endpoint.type === HttpRequestType.POST || endpoint.type === HttpRequestType.PUT) &&
+        (endpoint.options instanceof HttpPostOptions || endpoint.options instanceof HttpPutOptions) &&
         endpoint.options.fromBody) {
         const schemaErrors = SchemaValidator.ValidateBody(req, endpoint.options.fromBody);
         console.log(schemaErrors);
@@ -170,20 +212,21 @@ export class Server {
           // Schema error handling
           const err = new Error(schemaErrors);
           if (endpoint.options.errorHandler) {
-            endpoint.options.errorHandler(err, req, res, next);
+            return endpoint.options.errorHandler(err, req, res, next);
           } else {
-            this.errorHandler(err, req, res, next);
+            // this.errorHandler(err, req, res, next);
+            return this.errorHandler(err, req, res, next);
           }
 
         }
       }
 
       // Pass the context onto the endpoint function and handle the errors accordingly
-      endpoint.fn(context).then(() => next()).catch((err) => {
+      return endpoint.fn(context).then(() => next()).catch((err) => {
         if (endpoint.options && endpoint.options.errorHandler) {
-          endpoint.options.errorHandler(err, req, res, next);
+          return endpoint.options.errorHandler(err, req, res, next);
         } else {
-          this.errorHandler(err, req, res, next);
+          return this.errorHandler(err, req, res, next);
         }
       });
     };

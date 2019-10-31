@@ -3,4 +3,8 @@ export enum HttpRequestType {
   POST,
   PUT,
   DELETE,
+  HEAD,
+  CONNECT,
+  OPTIONS,
+  TRACE
 }

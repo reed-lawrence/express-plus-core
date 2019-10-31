@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import { ApiEndpoint, IApiEndpoint } from "./api-endpoint";
-import { ControllerOptions } from './decorations/controller.decorator';
-import { HttpRequestType } from "./decorations/http-types/http-request-type.enum";
-import { IHttpTypeParameters } from './decorations/http-types/http-type-parameters';
+import { ControllerOptions } from './decorators/controller.decorator';
+import { HttpRequestType } from "./decorators/http-types/http-request-type.enum";
+import { IHttpTypeParameters } from './decorators/http-types/http-type-parameters';
 import { HttpContext } from "./http-context";
 import { MetadataKeys } from "./metadata-keys";
-import { Ok } from "./return-types";
+import { NoContent } from "./return-types";
 
 export interface IApiController {
   readonly endpoints: IApiEndpoint[];
@@ -45,11 +45,10 @@ export class ApiController implements IApiController {
     console.log(this);
   }
   public async default({ req, res }: HttpContext) {
-    return Ok(res);
+    return NoContent(res);
   }
 
   public getRoute(): string {
-    const keys = Reflect.getMetadataKeys(this);
     const constructorName: string = Object.getPrototypeOf(this).constructor.name;
 
     const metadata: ControllerOptions = Reflect.getMetadata(MetadataKeys.controller + constructorName, this);
@@ -64,7 +63,7 @@ export class ApiController implements IApiController {
         // console.log(arr);
         return arr[0];
       } else {
-        throw new Error('Cannot implicitly determine a controller name. Please specify a route within the @Controller decorator, or ensure "Controller" appears in the class instance name.');
+        throw new Error('Cannot implicitly determine a controller route. Please specify a route within the @Controller decorator, or ensure "Controller" appears in the class instance name.');
       }
     }
   }

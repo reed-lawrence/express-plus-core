@@ -1,9 +1,11 @@
-import { Dictionary, Request } from "express-serve-static-core";
-import "reflect-metadata";
-import { RangeValidator } from "../decorations/range";
-import { StringLengthValidator } from "../decorations/string-length";
-import { MetadataKeys } from "../metadata-keys";
-import { Utils } from "../utils";
+import 'reflect-metadata';
+
+import { Dictionary, Request } from 'express-serve-static-core';
+
+import { RangeValidator } from '../decorators/params/range';
+import { StringLengthValidator } from '../decorators/params/string-length';
+import { MetadataKeys } from '../metadata-keys';
+import { Utils } from '../utils';
 
 export class SchemaValidator {
   public static ValidateBody<T extends object>(req: Request<Dictionary<string>>, classRef: (new () => T) | T) {
@@ -43,51 +45,38 @@ export class SchemaValidator {
       const key = Utils.getKey(paramName, body);
 
       if (metaKey.indexOf(MetadataKeys.required) !== -1) {
-        if (key && !this.ValidateRequired(body[key])) {
-          invalidParams.push('Invalid format parameter [' + paramName + '] was not supplied');
+        if (key && !this.validateRequired(body[key])) {
+          invalidParams.push(`Invalid format parameter [${paramName}] was not supplied`);
         }
       } else if (metaKey.indexOf(MetadataKeys.email) !== -1) {
         if (key && !this.validateEmail(body[key] as any)) {
-          invalidParams.push('Invalid format [Email] on ' + paramName);
+          invalidParams.push(`Invalid format [Email] on ${paramName}`);
         }
       } else if (metaKey.indexOf(MetadataKeys.range) !== -1) {
-        if (key && !this.ValidateRange(body[key], paramValue)) {
-          invalidParams.push('Invalid format [Range] on ' + paramName);
+        if (key && !this.validateRange(body[key], paramValue)) {
+          invalidParams.push(`Invalid format [Range] on ${paramName}`);
         }
       } else if (metaKey.indexOf(MetadataKeys.strLength) !== -1) {
-        if (key && !this.ValidateStringLength(body[key], paramValue)) {
-          invalidParams.push('Invalid format [StringLength] on ' + paramName);
+        if (key && !this.validateStringLength(body[key], paramValue)) {
+          invalidParams.push(`Invalid format [StringLength] on ${paramName}`);
+        }
+      } else if (metaKey.indexOf(MetadataKeys.regex) !== -1) {
+        if (key && !this.validateRegex(body[key], paramValue)) {
+          invalidParams.push(`Invalid format [Regex] on ${paramName}`);
         }
       }
     }
     return { missing: missingParams, invalid: invalidParams };
   }
 
-  private static schemaErrorsToString(errors: ISchemaErrors): string {
-    let output = 'Model Validation Error(s):';
-    if (errors.missing.length) {
-      output += '\nMissing parameters in request: ';
-      for (let i = 0; i < errors.missing.length; i++) {
-        output += i === 0 ? errors.missing[i] : ', ' + errors.missing[i];
-      }
-    }
 
-    if (errors.invalid.length) {
-      output += '\nInvalid parameters in request: ';
-      for (let i = 0; i < errors.invalid.length; i++) {
-        output += i === 0 ? errors.invalid[i] : ', ' + errors.invalid[i];
-      }
-    }
-
-    return output;
-  }
 
   private static validateEmail(value: string) {
     const regex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return value ? regex.test(value) : true;
   }
 
-  private static ValidateRange(value: number, validator: RangeValidator) {
+  private static validateRange(value: number, validator: RangeValidator) {
     if (!value) {
       return true;
     } else if (typeof value !== 'number') {
@@ -105,7 +94,7 @@ export class SchemaValidator {
     }
   }
 
-  private static ValidateStringLength(value: string, validator: StringLengthValidator) {
+  private static validateStringLength(value: string, validator: StringLengthValidator) {
     if (!value) {
       return true;
     } else if (typeof value !== 'string') {
@@ -123,8 +112,18 @@ export class SchemaValidator {
     }
   }
 
-  private static ValidateRequired(value: any) {
+  private static validateRequired(value: any) {
     return value ? true : false;
+  }
+
+  private static validateRegex(value: any, validator: RegExp) {
+    if (!value) {
+      return true;
+    } else if (!validator) {
+      return undefined;
+    } else {
+      return validator.test(value);
+    }
   }
 
   private static validateObjects<T extends object>(
@@ -148,6 +147,25 @@ export class SchemaValidator {
       }
     }
     return;
+  }
+
+  private static schemaErrorsToString(errors: ISchemaErrors): string {
+    let output = 'Model Validation Error(s):';
+    if (errors.missing.length) {
+      output += '\nMissing parameters in request: ';
+      for (let i = 0; i < errors.missing.length; i++) {
+        output += i === 0 ? errors.missing[i] : ', ' + errors.missing[i];
+      }
+    }
+
+    if (errors.invalid.length) {
+      output += '\nInvalid parameters in request: ';
+      for (let i = 0; i < errors.invalid.length; i++) {
+        output += i === 0 ? errors.invalid[i] : ', ' + errors.invalid[i];
+      }
+    }
+
+    return output;
   }
 }
 

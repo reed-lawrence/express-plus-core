@@ -1,5 +1,6 @@
-import { Required } from '../core/decorations/required';
-import { StringLength } from '../core/decorations/string-length';
+import { Required } from "../core/decorators/params/required";
+import { StringLength } from "../core/decorators/params/string-length";
+
 
 export interface IExampleObject {
   id: number;

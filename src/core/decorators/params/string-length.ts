@@ -1,5 +1,5 @@
-import "reflect-metadata";
-import { MetadataKeys } from "../metadata-keys";
+import 'reflect-metadata';
+import { MetadataKeys } from '../../metadata-keys';
 
 export interface IStringLegnthOptions {
   min: number;
