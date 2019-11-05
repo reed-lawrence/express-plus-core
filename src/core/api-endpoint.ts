@@ -21,6 +21,5 @@ export class ApiEndpoint implements IApiEndpoint {
     this.type = init ? init.type : HttpRequestType.GET;
     this.fn = init ? init.fn : Promise.resolve;
     this.options = init && init.options ? init.options : undefined;
-
   }
 }

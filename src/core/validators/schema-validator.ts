@@ -8,9 +8,18 @@ import { MetadataKeys } from '../metadata-keys';
 import { Utils } from '../utils';
 
 export class SchemaValidator {
+
+  /**
+   * Funciton that validates the body of an express request
+   * @param req the express request object
+   * @param classRef The class reference or object to validate against
+   * @returns stringified error, or undefined if none
+   */
   public static ValidateBody<T extends object>(req: Request<Dictionary<string>>, classRef: (new () => T) | T) {
-    console.log(typeof classRef);
+
+    // If the object passed to the classRef is a constructor, then construct it. Otherwise leave as-is.
     const obj = classRef instanceof Function ? new classRef() : classRef;
+
     if (req.headers["content-type"] !== 'application/json') {
       return 'Expected Content-Type header of application/json';
     }
@@ -18,13 +27,22 @@ export class SchemaValidator {
     if (typeof req.body !== typeof obj) {
       return 'Incompatible body types';
     }
+
+    // Validate the body according to the schema supplied by the object created/passed in from the classRef
     const schemaErrors = this.validateSchema(req.body, obj);
+
     if (schemaErrors.missing.length || schemaErrors.invalid.length) {
       return this.schemaErrorsToString(schemaErrors);
     }
     return;
   }
 
+  /**
+   * Function that compares metadata and object parameters against the body of a request and identifies any missing or invalid params
+   * @param body The body of the incoming request
+   * @param obj the target object to validate against
+   * @returns in object of missing and invalid parameters
+   */
   private static validateSchema<T extends object>(body: any, obj: T): ISchemaErrors {
     console.log(obj);
     const missingParams: string[] = [];
@@ -126,24 +144,29 @@ export class SchemaValidator {
     }
   }
 
+  /**
+   * Function that validates objects parameter existence of a target compared to a model object.
+   * @param target the incoming object to compare
+   * @param model the model object to compare against
+   * @param targetParamName the parameter name in the case of a complex or nested object.
+   */
   private static validateObjects<T extends object>(
     target: any,
     model: T,
     targetParamName?: string): string | undefined {
     for (const key in model) {
       const metaKeys = Reflect.getMetadataKeys(model);
-      const required = metaKeys.indexOf(MetadataKeys.required + key) !== -1;
       const optional = metaKeys.indexOf(MetadataKeys.optional + key) !== -1;
       if (model.hasOwnProperty(key)) {
         if (target === null) {
-          return 'Invalid schema error: Object expected, recieved null' + (' at: ' + targetParamName) || '';
+          return `Invalid schema error: Object expected, recieved null at: ${targetParamName || ''}`;
         }
         if (!target.hasOwnProperty(key) && !optional) {
-          return 'Missing or undefined property in payload: ' +
-            (targetParamName ? targetParamName + '.' + key : key);
+          return `Missing or undefined property in payload: ${targetParamName ? `${targetParamName}.${key}` : key}`;
         } else if (model[key] instanceof Object) {
-          return this.validateObjects<any>(target[key], model[key],
-            targetParamName ? targetParamName + '.' + key : key);
+
+          // Nested objects should deeply validate
+          return this.validateObjects<any>(target[key], model[key], targetParamName ? `${targetParamName}.${key}` : key);
         }
       } else {
         return 'Property does not correspond to key in model';
@@ -155,14 +178,14 @@ export class SchemaValidator {
   private static schemaErrorsToString(errors: ISchemaErrors): string {
     let output = 'Model Validation Error(s):';
     if (errors.missing.length) {
-      output += '\nMissing parameters in request: ';
+      output += '| Missing parameters in request: ';
       for (let i = 0; i < errors.missing.length; i++) {
         output += i === 0 ? errors.missing[i] : ', ' + errors.missing[i];
       }
     }
 
     if (errors.invalid.length) {
-      output += '\nInvalid parameters in request: ';
+      output += '| Invalid parameters in request: ';
       for (let i = 0; i < errors.invalid.length; i++) {
         output += i === 0 ? errors.invalid[i] : ', ' + errors.invalid[i];
       }

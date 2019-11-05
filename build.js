@@ -17,5 +17,19 @@ function deleteFolderRecursive(path) {
   }
 };
 
+function copyAssets(files, to){
+  console.log('copying assets');
+  if(!fs.existsSync(to)){
+    fs.mkdirSync(to);
+  }
+
+  if(fs.existsSync(to) && fs.lstatSync(to).isDirectory()){
+    for(const file of files){
+      fs.copyFileSync(file, to);
+    }
+  }
+}
+
 console.log('build.js: Removing output directory');
 deleteFolderRecursive('./dist');
+// copyAssets(['./server/.env'], './dist');

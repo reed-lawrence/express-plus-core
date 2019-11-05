@@ -13,7 +13,7 @@ import { HttpConnect } from '../../core/decorators/http-types/http-connect';
 import { HttpDelete } from '../../core/decorators/http-types/http-delete';
 import { HttpTrace } from '../../core/decorators/http-types/http-trace';
 
-@Controller({route: 'v1/MyController'})
+@Controller({ route: 'v1/MyController' })
 export class HelloWorldController extends ApiController {
 
   constructor() {
@@ -25,13 +25,13 @@ export class HelloWorldController extends ApiController {
     return Ok(res, req.params);
   }
 
-  @HttpPost({ fromBody: {id: 0, value: ''} })
+  @HttpPost({ fromBody: { id: 0, value: '' } })
   public async TestSchema({ req, res }: HttpContext) {
     console.log('TestSchema called');
     return Ok(res, 'Ok');
   }
 
-  @HttpGet()
+  @HttpGet({ cors: { origin: 'https://test.com' } })
   public async TestBadRequest({ req, res }: HttpContext) {
     throw new ApplicationError('Unauthorized', 401);
   }
@@ -44,7 +44,7 @@ export class HelloWorldController extends ApiController {
 
   @HttpGet({ authenticate: true })
   public async TestAuth({ req, res }: HttpContext) {
-    return Ok(res, res.locals);
+    return Ok(res, req.headers);
   }
 
   @HttpPut({ contentType: HttpContentType.UrlEncoded, fromBody: ExampleObject })

@@ -3,15 +3,14 @@ import 'reflect-metadata';
 import express from 'express';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import multer from 'multer';
+import cors from 'cors';
 
-import { environment } from '../environments/environment';
+import { IServerEnvironment } from './environment';
 import { ApiEndpoint } from './api-endpoint';
 import { ApiController } from './controller';
 import { HttpContentType } from './decorators/http-types/http-content-type.enum';
 import { HttpPostOptions } from './decorators/http-types/http-post';
 import { HttpRequestType } from './decorators/http-types/http-request-type.enum';
-import { ApplicationError } from './error-handling/application-error';
-import { DefaultErrorResponse } from './error-handling/default-error-response';
 import { routeMapTemplate } from './html/route-map.html';
 import { HttpContext } from './http-context';
 import { MetadataKeys } from './metadata-keys';
@@ -25,6 +24,7 @@ export interface IServerOptions {
   routePrefix?: string;
   errorHandler?: (err: any, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
   authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<void>;
+  cors?: cors.CorsOptions;
 }
 
 export class Server {
@@ -34,16 +34,54 @@ export class Server {
   // Multipart/form-data
   private multer = multer();
 
-  private controllers: ApiController[] = [];
+  /**
+   * Array of ApiControllers to handle
+   */
+  private controllers: ApiController[] = new Array<ApiController>();
+
+  /**
+   * Route prefix to prepend to each controller/endpoint route
+   */
   private readonly routePrefix?: string = '';
+
+  /**
+   * Name of the server to display upon getting runtime info
+   */
   private readonly serverName = 'Express Plus API';
+
+  /**
+   * Array of routes to be listened to by the underlying express instance
+   */
   private routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'HEAD' | 'TRACE' | 'OPTIONS', endpoint: ApiEndpoint }>();
+
+  /**
+   * The default authentication method to be called by endpoints requiring authentication
+   */
   private readonly authMethod?: (
     req: Request<Dictionary<string>>,
     res: Response,
     next: NextFunction) => Promise<void>;
 
-  constructor(options?: IServerOptions) {
+  /**
+   * The default error handler to intercept and handle all application errors
+   */
+  private readonly errorHandler = DefaultErrorFn;
+
+  /**
+   * The server port to listen on
+   */
+  private readonly port: string = '80';
+
+  /**
+   * The server debug state
+   */
+  private readonly debug: boolean = false;
+
+  private readonly cors?: cors.CorsOptions;
+
+  constructor(env: IServerEnvironment, options?: IServerOptions) {
+    this.port = env.port;
+    this.debug = env.debug;
     if (options) {
       if (options.controllers) {
         for (const controllerConst of options.controllers) {
@@ -62,25 +100,32 @@ export class Server {
       if (options.authMethod) {
         this.authMethod = options.authMethod;
       }
+
+      if (options.cors) {
+        this.cors = options.cors;
+      }
     }
   }
 
+  /**
+   * Start the server instance
+   */
   public start() {
     this.registerControllers(this.controllers);
 
-    this.app.get('/', (req, res) => {
-      this.buildRouteTable().then(table => {
-        res.send(table);
+    if (this.debug) {
+      console.log('Server is in debug mode');
+      this.app.get('/', (req, res) => {
+        this.buildRouteTable().then(table => {
+          res.send(table);
+        });
       });
-    });
+    }
 
-    this.app.use(this.errorHandler);
-
-    this.app.listen(environment.PORT, () => {
-      console.log('Listening on port ' + environment.PORT);
+    this.app.listen(this.port, () => {
+      console.log(`Listening on port ${this.port}`);
     });
   }
-  private readonly errorHandler = DefaultErrorFn;
 
   private registerControllers(controllers: ApiController[]) {
     for (const controller of controllers) {
@@ -90,6 +135,20 @@ export class Server {
           const route = `${this.routePrefix}/${controller.getRoute()}/${endpoint.route}`;
 
           const middleware: (express.RequestHandler)[] = new Array();
+
+          // CORS middleware
+          if (endpoint.options && endpoint.options.cors !== undefined) {
+            if (typeof endpoint.options.cors === 'object') {
+              middleware.push(cors(endpoint.options.cors));
+            } else if (endpoint.options.cors === false) {
+              // if endpoint.options.cors is explicitly false then don't register any cors policy to this route
+              console.log(`Cors policy explicitly ignored for route: ${route}`);
+            }
+          } else if (this.cors) {
+            middleware.push(cors(this.cors));
+          }
+
+          // Authentication middleware
           if (endpoint.options && endpoint.options.authenticate) {
 
             let authMethod: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<any>;
@@ -118,6 +177,7 @@ export class Server {
           // This is the function that gets passed to the final controller endpoint
           const contextFn = this.createContextFn(endpoint);
 
+          // Register routes
           if (endpoint.type === HttpRequestType.GET) {
 
             console.log(`endpoint added at: ${route}`);

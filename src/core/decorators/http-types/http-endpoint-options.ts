@@ -1,12 +1,14 @@
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import { HttpContext } from "../../http-context";
 import { Utils } from "../../utils";
+import { CorsOptions } from 'cors'
 
 export interface IHttpEndpointOptions {
   route?: string;
   errorHandler?: (err: Error, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
   authenticate?: boolean;
   authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<any>;
+  cors?: CorsOptions | false;
 }
 
 export class HttpEndpointOptions implements IHttpEndpointOptions {
@@ -14,6 +16,7 @@ export class HttpEndpointOptions implements IHttpEndpointOptions {
   public errorHandler?: (err: Error, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
   public authenticate?: boolean;
   public authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<any>;
+  public cors?: CorsOptions | false;
 
   constructor(init?: IHttpEndpointOptions) {
     if (init) {
@@ -21,6 +24,7 @@ export class HttpEndpointOptions implements IHttpEndpointOptions {
       this.errorHandler = init.errorHandler || undefined;
       this.authenticate = init.authenticate || undefined;
       this.authMethod = init.authMethod || undefined;
+      this.cors = init.cors || undefined;
     }
   }
 }
