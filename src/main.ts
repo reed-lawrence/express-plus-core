@@ -6,10 +6,10 @@ import { HelloWorldController } from "./server/controllers/hello-world.controlle
 
 const server = new Server(
   {
-    authMethod: TestAuth,
     controllers: [
-      HelloWorldController,
+      HelloWorldController
     ],
+    authMethod: TestAuth
   });
 
 server.start();

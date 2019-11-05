@@ -131,12 +131,15 @@ export class SchemaValidator {
     model: T,
     targetParamName?: string): string | undefined {
     for (const key in model) {
+      const metaKeys = Reflect.getMetadataKeys(model);
+      const required = metaKeys.indexOf(MetadataKeys.required + key) !== -1;
+      const optional = metaKeys.indexOf(MetadataKeys.optional + key) !== -1;
       if (model.hasOwnProperty(key)) {
         if (target === null) {
           return 'Invalid schema error: Object expected, recieved null' + (' at: ' + targetParamName) || '';
         }
-        if (!target.hasOwnProperty(key)) {
-          return 'Missing/undefined property in payload: ' +
+        if (!target.hasOwnProperty(key) && !optional) {
+          return 'Missing or undefined property in payload: ' +
             (targetParamName ? targetParamName + '.' + key : key);
         } else if (model[key] instanceof Object) {
           return this.validateObjects<any>(target[key], model[key],

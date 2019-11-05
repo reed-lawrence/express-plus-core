@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import express, { RequestHandler } from 'express';
+import express from 'express';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import multer from 'multer';
 
@@ -12,19 +12,19 @@ import { HttpPostOptions } from './decorators/http-types/http-post';
 import { HttpRequestType } from './decorators/http-types/http-request-type.enum';
 import { ApplicationError } from './error-handling/application-error';
 import { DefaultErrorResponse } from './error-handling/default-error-response';
-import { NotFoundError } from './error-handling/not-found-error';
 import { routeMapTemplate } from './html/route-map.html';
 import { HttpContext } from './http-context';
 import { MetadataKeys } from './metadata-keys';
 import { Utils } from './utils';
 import { SchemaValidator } from './validators/schema-validator';
 import { HttpPutOptions } from './decorators/http-types/http-put';
+import { DefaultErrorFn } from './error-handling/default-error-fn';
 
 export interface IServerOptions {
   controllers: Array<(new () => ApiController)>;
   routePrefix?: string;
   errorHandler?: (err: any, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
-  authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<HttpContext>;
+  authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<void>;
 }
 
 export class Server {
@@ -35,13 +35,13 @@ export class Server {
   private multer = multer();
 
   private controllers: ApiController[] = [];
-  private readonly routePrefix?: string;
+  private readonly routePrefix?: string = '';
   private readonly serverName = 'Express Plus API';
   private routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'HEAD' | 'TRACE' | 'OPTIONS', endpoint: ApiEndpoint }>();
   private readonly authMethod?: (
     req: Request<Dictionary<string>>,
     res: Response,
-    next: NextFunction) => Promise<HttpContext>;
+    next: NextFunction) => Promise<void>;
 
   constructor(options?: IServerOptions) {
     if (options) {
@@ -52,7 +52,7 @@ export class Server {
       }
 
       if (options.routePrefix) {
-        this.routePrefix = Utils.trimRoute(options.routePrefix);
+        this.routePrefix = '/' + Utils.trimRoute(options.routePrefix);
       }
 
       if (options.errorHandler) {
@@ -80,22 +80,14 @@ export class Server {
       console.log('Listening on port ' + environment.PORT);
     });
   }
-  private readonly errorHandler = (
-    err: Error | ApplicationError,
-    req: Request<Dictionary<string>>,
-    res: Response,
-    next: NextFunction) => {
-    const status = err instanceof ApplicationError ? err.status : 500;
-    res.status(status).send(new DefaultErrorResponse(err));
-    return next(err);
-  }
+  private readonly errorHandler = DefaultErrorFn;
 
   private registerControllers(controllers: ApiController[]) {
     for (const controller of controllers) {
       if (this.hasControllerDecorator(controller)) {
 
         for (const endpoint of controller.endpoints) {
-          const route = `/${controller.getRoute()}/${endpoint.route}`;
+          const route = `${this.routePrefix}/${controller.getRoute()}/${endpoint.route}`;
 
           const middleware: (express.RequestHandler)[] = new Array();
           if (endpoint.options && endpoint.options.authenticate) {

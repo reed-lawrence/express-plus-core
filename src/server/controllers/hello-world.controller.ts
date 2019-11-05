@@ -13,7 +13,7 @@ import { HttpConnect } from '../../core/decorators/http-types/http-connect';
 import { HttpDelete } from '../../core/decorators/http-types/http-delete';
 import { HttpTrace } from '../../core/decorators/http-types/http-trace';
 
-@Controller()
+@Controller({route: 'v1/MyController'})
 export class HelloWorldController extends ApiController {
 
   constructor() {
@@ -25,10 +25,10 @@ export class HelloWorldController extends ApiController {
     return Ok(res, req.params);
   }
 
-  @HttpPost({ fromBody: ExampleObject })
+  @HttpPost({ fromBody: {id: 0, value: ''} })
   public async TestSchema({ req, res }: HttpContext) {
     console.log('TestSchema called');
-    return Ok(res, 'test');
+    return Ok(res, 'Ok');
   }
 
   @HttpGet()
@@ -69,7 +69,7 @@ export class HelloWorldController extends ApiController {
   }
 
   @HttpTrace()
-  public async TestTrace({req, res}: HttpContext){
+  public async TestTrace({ req, res }: HttpContext) {
     return Ok(res, 'trace');
   }
 

@@ -1,11 +1,13 @@
 import { Required } from "../core/decorators/params/required";
 import { StringLength } from "../core/decorators/params/string-length";
+import { RegexMatch } from "../core/decorators/params/regex-match";
+import { Optional } from "../core/decorators/params/optional";
 
 
 export interface IExampleObject {
   id: number;
   value: string;
-  value2: string;
+  phone?: string;
 }
 
 export interface ISubObject {
@@ -14,21 +16,21 @@ export interface ISubObject {
 }
 
 export class ExampleObject implements IExampleObject {
+
+  @Required()
   public id: number;
 
   @Required()
   @StringLength({ min: 1, max: 5 })
   public value: string;
 
-  @StringLength((length) => length >= 5 && length <= 10)
-  public value2: string;
-
-  public subobject: ISubObject;
+  @Optional()
+  @RegexMatch(/^[(][0-9]{3}[)][0-9]{3}[-][0-9]{4}$/)
+  public phone?: string;
 
   constructor(init?: IExampleObject) {
     this.id = init ? init.id : 0;
     this.value = init ? init.value : '';
-    this.value2 = init ? init.value2 : '';
-    this.subobject = { id: 0, subvalue: '' };
+    this.phone = init ? init.phone : undefined;
   }
 }
