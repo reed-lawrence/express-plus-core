@@ -1,11 +1,9 @@
 import 'reflect-metadata';
 
 import { Dictionary, Request } from 'express-serve-static-core';
-
-import { RangeValidator } from '../decorators/params/range';
-import { StringLengthValidator } from '../decorators/params/string-length';
 import { MetadataKeys } from '../metadata-keys';
 import { Utils } from '../utils';
+import { RangeValidator, StringLengthValidator } from '../../decorators/class-params.decorator';
 
 export class SchemaValidator {
 

@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 
-import { ApiController } from '../controller';
-import { MetadataKeys } from '../metadata-keys';
-import { Utils } from '../utils';
+import { ApiController } from '../index'
+import { MetadataKeys } from '../lib/metadata-keys';
+import { Utils } from '../lib/utils';
 
 export interface IControllerOptions {
   route?: string;

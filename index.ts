@@ -1,24 +1,129 @@
-import 'reflect-metadata';
-
+import cors from 'cors';
 import express from 'express';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import multer from 'multer';
-import cors from 'cors';
 
-import { IServerEnvironment } from './environment';
-import { ApiEndpoint } from './api-endpoint';
-import { ApiController } from './controller';
-import { HttpContentType } from './decorators/http-types/http-content-type.enum';
-import { HttpPostOptions } from './decorators/http-types/http-post';
-import { HttpRequestType } from './decorators/http-types/http-request-type.enum';
-import { routeMapTemplate } from './html/route-map.html';
-import { HttpContext } from './http-context';
-import { MetadataKeys } from './metadata-keys';
-import { Utils } from './utils';
-import { SchemaValidator } from './validators/schema-validator';
-import { HttpPutOptions } from './decorators/http-types/http-put';
-import { DefaultErrorFn } from './error-handling/default-error-fn';
+import { ControllerOptions } from './decorators/controller.decorator';
+import {
+    HttpContentType, HttpPostOptions, HttpPutOptions, HttpRequestType, IHttpEndpointOptions,
+    IHttpPostOptions, IHttpTypeParameters
+} from './decorators/http-types.decorator';
+import { DefaultErrorFn } from './error-handlers';
+import { routeMapTemplate } from './lib/html/route-map.html';
+import { MetadataKeys } from './lib/metadata-keys';
+import { Utils } from './lib/utils';
+import { SchemaValidator } from './lib/validators/schema-validator';
+import { NoContent } from './return-types';
 
+export interface IServerEnvironment {
+  port: string;
+  debug: boolean;
+}
+
+export class ServerEnvironment implements IServerEnvironment {
+  port: string = process.env.PORT || '80';
+  debug: boolean = process.env.NODE_ENV === 'development';
+  constructor(init?: Partial<IServerEnvironment>) {
+    if (init) {
+      if (init.port) { this.port = init.port };
+      if (init.debug) { this.debug = init.debug };
+    }
+  }
+}
+
+export class HttpContext {
+  public req: Request<Dictionary<string>>;
+  public res: Response;
+  [key: string]: any;
+
+  constructor(req: Request<Dictionary<string>>, res: Response, next: NextFunction) {
+    this.req = req;
+    this.res = res;
+  }
+}
+
+export interface IApiEndpoint {
+  route: string;
+  type: HttpRequestType;
+  fn: (context: HttpContext) => Promise<any>;
+  options?: IHttpEndpointOptions | IHttpPostOptions;
+}
+
+export class ApiEndpoint implements IApiEndpoint {
+  public route: string;
+  public type: HttpRequestType;
+  public fn: (context: HttpContext) => Promise<any>;
+  public options?: IHttpEndpointOptions | IHttpPostOptions;
+
+  constructor(init?: IApiEndpoint) {
+    this.route = init ? init.route : '';
+    this.type = init ? init.type : HttpRequestType.GET;
+    this.fn = init ? init.fn : Promise.resolve;
+    this.options = init && init.options ? init.options : undefined;
+  }
+}
+
+export interface IApiController {
+  readonly endpoints: IApiEndpoint[];
+  default: (context: HttpContext) => Promise<any>;
+}
+
+export class ApiController implements IApiController {
+  public readonly endpoints: ApiEndpoint[];
+
+  constructor() {
+    // console.log('ControllerConstructor called');
+    this.endpoints = [];
+
+    const metadataKeys: string[] = Reflect.getMetadataKeys(this);
+    // console.log(metadataKeys);
+    for (const key of metadataKeys) {
+      const keyVal: IHttpTypeParameters = Reflect.getMetadata(key, this);
+      if (key.indexOf('endpoint:') !== -1 && keyVal.type) {
+        const fnName = key.split('endpoint:')[1];
+        this.endpoints.push(new ApiEndpoint({
+          fn: this[fnName as Extract<keyof this, string>] as any,
+          options: keyVal.options ? keyVal.options : undefined,
+          route: keyVal.options && keyVal.options.route ? keyVal.options.route : fnName,
+          type: keyVal.type,
+        }));
+      }
+    }
+
+    if (this.default) {
+      this.endpoints.push(new ApiEndpoint({
+        fn: this.default,
+        route: '',
+        type: HttpRequestType.GET,
+      }));
+    }
+
+    console.log(this);
+  }
+  public async default({ req, res }: HttpContext) {
+    return NoContent(res);
+  }
+
+  public getRoute(): string {
+    const constructorName: string = Object.getPrototypeOf(this).constructor.name;
+
+    const metadata: ControllerOptions = Reflect.getMetadata(MetadataKeys.controller + constructorName, this);
+    if (metadata && metadata.route) {
+      return metadata.route;
+    } else {
+
+      const index = constructorName.indexOf('Controller');
+
+      if (constructorName && index) {
+        const arr = constructorName.split('Controller');
+        // console.log(arr);
+        return arr[0];
+      } else {
+        throw new Error('Cannot implicitly determine a controller route. Please specify a route within the @Controller decorator, or ensure "Controller" appears in the class instance name.');
+      }
+    }
+  }
+}
 export interface IServerOptions {
   controllers: Array<(new () => ApiController)>;
   routePrefix?: string;
