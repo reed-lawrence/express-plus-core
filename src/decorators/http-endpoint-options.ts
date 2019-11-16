@@ -1,5 +1,5 @@
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
-import { Utils } from "../../utils";
+import { Utils } from "../utils";
 import { CorsOptions } from 'cors'
 
 export interface IHttpEndpointOptions {

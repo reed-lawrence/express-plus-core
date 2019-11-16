@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import { ApiController } from '../index'
+import { ApiController } from '../../index'
 import { MetadataKeys } from '../lib/metadata-keys';
 import { Utils } from '../lib/utils';
 
