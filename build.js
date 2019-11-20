@@ -12,7 +12,6 @@ function deleteFolderRecursive(path) {
       }
     });
 
-    // console.log(`Deleting directory "${path}"...`);
     fs.rmdirSync(path);
   }
 };
@@ -32,4 +31,3 @@ function copyAssets(files, to){
 
 console.log('build.js: Removing output directory');
 deleteFolderRecursive('./dist');
-// copyAssets(['./server/.env'], './dist');

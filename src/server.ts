@@ -1,30 +1,25 @@
 import cors from 'cors';
 import express from 'express';
+import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import multer from 'multer';
-import {
-  ApiController,
-  ApiEndpoint,
-  HttpContext,
-  IServerEnvironment
-} from '../dist';
-import { DefaultErrorFn } from './error-handlers';
-import {
-  Dictionary,
-  NextFunction,
-  Request,
-  Response
-} from 'express-serve-static-core';
-import {
-  HttpContentType,
-  HttpPostOptions,
-  HttpPutOptions,
-  HttpRequestType
-} from '../dist/decorators/http-types.decorator';
-import { MetadataKeys } from './metadata-keys';
-import { routeMapTemplate } from './html/route-map.html';
-import { SchemaValidator } from './validators/schema-validator';
-import { Utils } from './utils';
 
+import { ApiController } from './api-controller';
+import { ApiEndpoint } from './api-endpoint';
+import {
+  HttpContentType, HttpPostOptions, HttpPutOptions, HttpRequestType
+} from './decorators/http-types.decorator';
+import { DefaultErrorFn } from './error-handlers';
+import { routeMapTemplate } from './html/route-map.html';
+import { HttpContext } from './http-context';
+import { MetadataKeys } from './metadata-keys';
+import { IServerEnvironment } from './server-environment';
+import { Utils } from './utils';
+import { SchemaValidator } from './validators/schema-validator';
+
+export const ServerErrorMessages = {
+  invalidRoute: 'Unable to register route. Authenticate was specified in the controller endpoint, but no authentication method was provided by the server or endpoint',
+  invalidController: 'Controllers must be denoted by the @Controller() decorator'
+}
 
 export interface IServerOptions {
   controllers: Array<(new () => ApiController)>;
@@ -36,7 +31,7 @@ export interface IServerOptions {
 
 export class Server {
   // Main server
-  private app = express();
+  public app = express();
 
   // Multipart/form-data
   private multer = multer();
@@ -44,27 +39,27 @@ export class Server {
   /**
    * Array of ApiControllers to handle
    */
-  private controllers: ApiController[] = new Array<ApiController>();
+  public controllers: ApiController[] = new Array<ApiController>();
 
   /**
    * Route prefix to prepend to each controller/endpoint route
    */
-  private readonly routePrefix?: string = '';
+  public readonly routePrefix?: string = '';
 
   /**
    * Name of the server to display upon getting runtime info
    */
-  private readonly serverName = 'Express Plus API';
+  public readonly serverName = 'Express Plus API';
 
   /**
    * Array of routes to be listened to by the underlying express instance
    */
-  private routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'HEAD' | 'TRACE' | 'OPTIONS', endpoint: ApiEndpoint }>();
+  public routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'HEAD' | 'TRACE' | 'OPTIONS', endpoint: ApiEndpoint }>();
 
   /**
    * The default authentication method to be called by endpoints requiring authentication
    */
-  private readonly authMethod?: (
+  public readonly authMethod?: (
     req: Request<Dictionary<string>>,
     res: Response,
     next: NextFunction) => Promise<void>;
@@ -72,19 +67,19 @@ export class Server {
   /**
    * The default error handler to intercept and handle all application errors
    */
-  private readonly errorHandler = DefaultErrorFn;
+  public readonly errorHandler = DefaultErrorFn;
 
   /**
    * The server port to listen on
    */
-  private readonly port: string = '80';
+  public readonly port: string = '80';
 
   /**
    * The server debug state
    */
-  private readonly debug: boolean = false;
+  public readonly debug: boolean = false;
 
-  private readonly cors?: cors.CorsOptions;
+  public readonly cors?: cors.CorsOptions;
 
   constructor(env: IServerEnvironment, options?: IServerOptions) {
     this.port = env.port;
@@ -134,7 +129,7 @@ export class Server {
     });
   }
 
-  private async registerControllers(controllers: ApiController[]) {
+  public async registerControllers(controllers: ApiController[]) {
     for (const controller of controllers) {
       if (this.hasControllerDecorator(controller)) {
 
@@ -165,8 +160,7 @@ export class Server {
             } else if (this.authMethod) {
               authMethod = this.authMethod;
             } else {
-              throw new Error(`Unable to register route. Authenticate was specified in the controller endpoint, 
-              but no authentication method was provided by the server or endpoint`);
+              throw new Error(ServerErrorMessages.invalidRoute);
             }
 
             // Wrapper for unified/customized error handling
@@ -187,51 +181,51 @@ export class Server {
           // Register routes
           if (endpoint.type === HttpRequestType.GET) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'GET', endpoint: endpoint });
             this.app.get(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.POST) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'POST', endpoint: endpoint });
             middleware.push(this.getFormatMiddleware(endpoint));
             this.app.post(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.PUT) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'PUT', endpoint: endpoint });
             middleware.push(this.getFormatMiddleware(endpoint));
             this.app.put(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.DELETE) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'DELETE', endpoint: endpoint });
             this.app.delete(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.CONNECT) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'CONNECT', endpoint: endpoint });
             this.app.connect(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.HEAD) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'HEAD', endpoint: endpoint });
             this.app.head(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.OPTIONS) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'OPTIONS', endpoint: endpoint });
             this.app.options(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.TRACE) {
 
-            console.log(`endpoint added at: ${route}`);
+            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'TRACE', endpoint: endpoint });
             this.app.trace(route, middleware, contextFn);
 
@@ -239,7 +233,7 @@ export class Server {
         }
 
       } else {
-        throw new Error('Controllers must be denoted by the @Controller() decorator');
+        throw new Error(ServerErrorMessages.invalidController);
       }
     }
   }

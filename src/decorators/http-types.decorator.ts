@@ -1,10 +1,11 @@
 import 'reflect-metadata';
 
-import { ApiController } from '../index';
-import { MetadataKeys } from '../lib/metadata-keys';
+import { CorsOptions } from 'cors';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
-import { CorsOptions } from 'cors'
-import { Utils } from '../lib/utils';
+
+import { ApiController } from '../api-controller';
+import { MetadataKeys } from '../metadata-keys';
+import { Utils } from '../utils';
 
 export enum HttpRequestType {
   GET = 1,

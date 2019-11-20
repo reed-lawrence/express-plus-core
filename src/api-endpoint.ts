@@ -1,5 +1,7 @@
-import { HttpRequestType, IHttpEndpointOptions, IHttpPostOptions } from "../dist/decorators/http-types.decorator";
-import { HttpContext } from "../dist";
+import {
+    HttpRequestType, IHttpEndpointOptions, IHttpPostOptions
+} from './decorators/http-types.decorator';
+import { HttpContext } from './http-context';
 
 export interface IApiEndpoint {
   route: string;

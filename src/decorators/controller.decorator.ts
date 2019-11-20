@@ -1,8 +1,7 @@
 import 'reflect-metadata';
-
-import { ApiController } from '../../index'
-import { MetadataKeys } from '../lib/metadata-keys';
-import { Utils } from '../lib/utils';
+import { Utils } from '../utils';
+import { ApiController } from '../api-controller';
+import { MetadataKeys } from '../metadata-keys';
 
 export interface IControllerOptions {
   route?: string;
@@ -28,16 +27,8 @@ export class ControllerOptions implements IControllerOptions {
 }
 
 export function Controller(options?: IControllerOptions) {
-  console.log('@Controller invoked');
-  // return function (target: ApiController, propertyKey: string, descriptor: PropertyDescriptor) {
-  //   const params = new ControllerOptions(options);
-  //   Reflect.defineMetadata(MetadataKeys.controller + propertyKey, params, target);
-  // }
   return (constructor: new () => ApiController) => {
-    console.log('@Controller return fn invoked');
     const params = new ControllerOptions(options);
-    console.dir(constructor);
     Reflect.defineMetadata(MetadataKeys.controller + constructor.name, params, constructor.prototype);
-    console.dir(Reflect.getMetadataKeys(constructor.prototype));
   };
 }

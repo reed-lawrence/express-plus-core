@@ -1,12 +1,9 @@
-import { IApiEndpoint, HttpContext, ApiEndpoint } from "../dist";
-
-import { IHttpTypeParameters, HttpRequestType } from "../dist/decorators/http-types.decorator";
-
-import { NoContent } from "./return-types";
-
-import { ControllerOptions } from "./decorators/controller.decorator";
-
-import { MetadataKeys } from "./metadata-keys";
+import { ApiEndpoint, IApiEndpoint } from './api-endpoint';
+import { ControllerOptions } from './decorators/controller.decorator';
+import { HttpRequestType, IHttpTypeParameters } from './decorators/http-types.decorator';
+import { HttpContext } from './http-context';
+import { MetadataKeys } from './metadata-keys';
+import { NoContent } from './return-types';
 
 export interface IApiController {
   readonly endpoints: IApiEndpoint[];
@@ -17,11 +14,9 @@ export class ApiController implements IApiController {
   public readonly endpoints: ApiEndpoint[];
 
   constructor() {
-    // console.log('ControllerConstructor called');
     this.endpoints = [];
 
     const metadataKeys: string[] = Reflect.getMetadataKeys(this);
-    // console.log(metadataKeys);
     for (const key of metadataKeys) {
       const keyVal: IHttpTypeParameters = Reflect.getMetadata(key, this);
       if (key.indexOf('endpoint:') !== -1 && keyVal.type) {
@@ -43,7 +38,6 @@ export class ApiController implements IApiController {
       }));
     }
 
-    console.log(this);
   }
   public async default({ req, res }: HttpContext) {
     return NoContent(res);
@@ -61,7 +55,6 @@ export class ApiController implements IApiController {
 
       if (constructorName && index) {
         const arr = constructorName.split('Controller');
-        // console.log(arr);
         return arr[0];
       } else {
         throw new Error('Cannot implicitly determine a controller route. Please specify a route within the @Controller decorator, or ensure "Controller" appears in the class instance name.');
