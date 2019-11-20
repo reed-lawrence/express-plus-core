@@ -135,6 +135,8 @@ describe('Server', () => {
     try {
       await server.registerControllers(server.controllers);
     } catch (err) {
+
+      // Assert
       assert.equal(err.message, ServerErrorMessages.invalidController);
       return;
     }
@@ -151,6 +153,8 @@ describe('Server', () => {
     try {
       await server.registerControllers(server.controllers);
     } catch (err) {
+
+      // Assert
       assert.equal(err.message, ServerErrorMessages.invalidRoute);
       return;
     }
