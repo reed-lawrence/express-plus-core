@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import http from 'http';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import multer from 'multer';
 
@@ -27,11 +28,15 @@ export interface IServerOptions {
   errorHandler?: (err: any, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
   authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<void>;
   cors?: cors.CorsOptions;
+  logging?: 'verbose' | 'none';
 }
 
-export class Server {
+export class ApiServer {
   // Main server
   public app = express();
+
+
+  public server: http.Server | undefined;
 
   // Multipart/form-data
   private multer = multer();
@@ -81,6 +86,8 @@ export class Server {
 
   public readonly cors?: cors.CorsOptions;
 
+  public readonly logging: 'verbose' | 'none' = 'none';
+
   constructor(env: IServerEnvironment, options?: IServerOptions) {
     this.port = env.port;
     this.debug = env.debug;
@@ -90,6 +97,8 @@ export class Server {
           this.controllers.push(new controllerConstructor());
         }
       }
+
+      if (options.logging) this.logging = options.logging;
 
       if (options.routePrefix) {
         this.routePrefix = '/' + Utils.trimRoute(options.routePrefix);
@@ -107,26 +116,43 @@ export class Server {
         this.cors = options.cors;
       }
     }
+
   }
 
   /**
    * Start the server instance
    */
-  public start() {
-    this.registerControllers(this.controllers);
+  public async start() {
+    return new Promise<void>(async resolve => {
+      await this.registerControllers(this.controllers);
 
-    if (this.debug) {
-      console.log('Server is in debug mode');
-      this.app.get('/', (req, res) => {
-        this.buildRouteTable().then(table => {
-          res.send(table);
+      if (this.debug) {
+        if (this.logging === 'verbose') {
+          console.log('Server is in debug mode');
+        }
+        this.app.get('/', (req, res) => {
+          this.buildRouteTable().then(table => {
+            res.send(table);
+          });
         });
-      });
-    }
+      }
 
-    this.app.listen(this.port, () => {
-      console.log(`Listening on port ${this.port}`);
+      this.server = this.app.listen(this.port, () => {
+        if (this.logging === 'verbose') {
+          console.log(`Listening on port ${this.port}`);
+        }
+        resolve();
+      });
     });
+  }
+
+  public stop() {
+    if (this.server) {
+      this.server.close();
+    } else {
+      throw new Error('Cannot stop server instance that is not running');
+    }
+    return;
   }
 
   public async registerControllers(controllers: ApiController[]) {
@@ -144,7 +170,9 @@ export class Server {
               middleware.push(cors(endpoint.options.cors));
             } else if (endpoint.options.cors === false) {
               // if endpoint.options.cors is explicitly false then don't register any cors policy to this route
-              console.log(`Cors policy explicitly ignored for route: ${route}`);
+              if (this.logging === 'verbose') {
+                console.log(`Cors policy explicitly ignored for route: ${route}`);
+              }
             }
           } else if (this.cors) {
             middleware.push(cors(this.cors));
@@ -181,54 +209,52 @@ export class Server {
           // Register routes
           if (endpoint.type === HttpRequestType.GET) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'GET', endpoint: endpoint });
             this.app.get(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.POST) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'POST', endpoint: endpoint });
             middleware.push(this.getFormatMiddleware(endpoint));
             this.app.post(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.PUT) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'PUT', endpoint: endpoint });
             middleware.push(this.getFormatMiddleware(endpoint));
             this.app.put(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.DELETE) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'DELETE', endpoint: endpoint });
             this.app.delete(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.CONNECT) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'CONNECT', endpoint: endpoint });
             this.app.connect(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.HEAD) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'HEAD', endpoint: endpoint });
             this.app.head(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.OPTIONS) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'OPTIONS', endpoint: endpoint });
             this.app.options(route, middleware, contextFn);
 
           } else if (endpoint.type === HttpRequestType.TRACE) {
 
-            // console.log(`endpoint added at: ${route}`);
             this.routes.push({ route: route, type: 'TRACE', endpoint: endpoint });
             this.app.trace(route, middleware, contextFn);
 
+          }
+        }
+
+        if (this.logging === 'verbose') {
+          for (const route of this.routes) {
+            console.log(`Route added: [${route.type}] /${route.route}`);
           }
         }
 
@@ -260,7 +286,7 @@ export class Server {
         endpoint.options.fromBody) {
 
         const schemaErrors = await SchemaValidator.ValidateBody(req, endpoint.options.fromBody);
-        console.log(schemaErrors);
+        // console.log(schemaErrors);
 
         if (schemaErrors) {
 

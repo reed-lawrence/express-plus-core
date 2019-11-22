@@ -1,15 +1,17 @@
 import 'reflect-metadata';
-import { describe, it } from "mocha";
+import request from 'request';
+import { describe, it, afterEach } from "mocha";
 import { TestController } from './controllers/test.controller';
 import { MetadataKeys } from '../src/metadata-keys';
-import assert, { fail, ok } from 'assert';
+import assert, { fail } from 'assert';
 import { HttpRequestType } from '../src/decorators/http-types.decorator';
 import { CustomRouteController } from './controllers/custom-route.controller';
 import { ControllerOptions } from '../src/decorators/controller.decorator';
-import { Server, ServerErrorMessages } from '../src/server';
+import { ServerErrorMessages, ApiServer } from '../src/api-server';
 import { InvalidController, InvalidAuthRoute } from './controllers/bad-controllers';
+import { IExampleObject } from './classes/example-object';
 
-describe('Controller', () => {
+describe('Controller [Class]', () => {
   it('Should create controller metadata', () => {
     // Arrange
     const controller = new TestController();
@@ -94,10 +96,10 @@ describe('Controller', () => {
   });
 });
 
-describe('Server', () => {
+describe('Server [Class]', () => {
   it('Constructor should register basic params', () => {
     // Arrange + Act
-    const server = new Server({ debug: true, port: '8000' });
+    const server = new ApiServer({ debug: true, port: '8000' });
 
     // Assert
     assert.equal(server.port, '8000', 'Port not as expected');
@@ -106,7 +108,7 @@ describe('Server', () => {
 
   it('Should register endpoints from injected Controllers', async () => {
     // Arrange
-    const server = new Server({ debug: true, port: '8000' }, {
+    const server = new ApiServer({ debug: true, port: '8000' }, {
       controllers: [TestController]
     });
     const expectedPrefix = 'Test';
@@ -127,7 +129,7 @@ describe('Server', () => {
 
   it('Should not register a controller without a decorator', async () => {
     // Arrange
-    const server = new Server({ debug: true, port: '8000' }, {
+    const server = new ApiServer({ debug: true, port: '8000' }, {
       controllers: [InvalidController]
     });
 
@@ -145,7 +147,7 @@ describe('Server', () => {
 
   it('Should not register an endpoint if auth required, but none supplied', async () => {
     // Arrange
-    const server = new Server({ debug: true, port: '8000' }, {
+    const server = new ApiServer({ debug: true, port: '8000' }, {
       controllers: [InvalidAuthRoute]
     });
 
@@ -160,4 +162,173 @@ describe('Server', () => {
     }
     fail('Expexted error to be thrown, left catch block');
   });
+
+  it('Should register an overwritten endpoint route', async () => {
+    // Arrange
+    const server = new ApiServer({ debug: true, port: '8000' }, {
+      controllers: [TestController]
+    });
+
+    // Act
+    await server.registerControllers(server.controllers);
+    const route = server.routes.find(r => r.route === '/Test/OverrideRoute');
+
+    // Assert
+    assert.equal(route !== undefined, true, 'Route not registered');
+  });
+
+});
+
+describe('Server', () => {
+  let server: ApiServer;
+  afterEach(() => server.stop());
+
+  it('Should listen on port', (done) => {
+    // Arrange
+    const port = '8000';
+    server = new ApiServer({ debug: true, port: port }, {
+      controllers: []
+    });
+    const endpoint = `http://localhost:${port}/`;
+
+    // Act
+    server.start().then(() => {
+      request(endpoint, { method: 'GET' }, (err, res, body) => {
+        // Assert
+        if (err) {
+          assert.fail(err);
+        } else {
+          assert.equal(res.statusCode, 200, 'Status code not as expected');
+          assert.equal(body !== undefined, true, 'Body not as expected');
+        }
+
+        done();
+      });
+    });
+  });
+
+  it('Should listen on GET route', (done) => {
+    // Arrange
+    const port = '8000';
+    server = new ApiServer({ debug: true, port: port }, {
+      controllers: [TestController]
+    });
+    const endpoint = `http://localhost:${port}/Test/TestGet`;
+    const expectedBody = 'GET works';
+
+    // Act
+    server.start().then(() => {
+      request(endpoint, { method: 'GET' }, (err, res, body) => {
+        // Assert
+        if (err) {
+          assert.fail(err);
+        } else {
+          assert.equal(res.statusCode, 200, 'Status code not as expected');
+          assert.equal(body, expectedBody, 'Body not as expected');
+        }
+
+        done();
+      });
+    });
+  });
+
+  it('Should listen on POST route', (done) => {
+    // Arrange
+    const port = '8000';
+    server = new ApiServer({ debug: true, port: port }, {
+      controllers: [TestController]
+    });
+    const endpoint = `http://localhost:${port}/Test/TestPost`;
+    const expectedBody = 'POST works';
+
+    // Act
+    server.start().then(() => {
+      request(endpoint, { method: 'POST' }, (err, res, body) => {
+        // Assert
+        if (err) {
+          assert.fail(err);
+        } else {
+          assert.equal(res.statusCode, 200, 'Status code not as expected');
+          assert.equal(body, expectedBody, 'Body not as expected');
+        }
+
+        done();
+      });
+    });
+  });
+
+  it('Should accept valid schema in POST', (done) => {
+    // Arrange
+    const port = '8000';
+    server = new ApiServer({ debug: true, port: port }, {
+      controllers: [TestController]
+    });
+    const endpoint = `http://localhost:${port}/Test/PostWithSchemaValidation`;
+    const expectedBody = 'formatting good';
+
+    const payload: IExampleObject = {
+      id: 1,
+      value: 'test@test.net'
+    };
+
+    // Act
+    server.start().then(() => {
+      request(endpoint, {
+        method: 'POST',
+        body: payload,
+        headers: {
+          "content-type": "application/json",
+        },
+        json: true
+      }, (err, res, body) => {
+        // Assert
+        if (err) {
+          assert.fail(err);
+        } else {
+          assert.equal(res.statusCode, 200, 'Status code not as expected');
+          assert.equal(body, expectedBody, 'Body not as expected');
+        }
+
+        done();
+      });
+    });
+  });
+
+  it('Should reject invalid schema in POST', (done) => {
+    // Arrange
+    const port = '8000';
+    server = new ApiServer({ debug: true, port: port }, {
+      controllers: [TestController]
+    });
+    const endpoint = `http://localhost:${port}/Test/PostWithSchemaValidation`;
+    const expectedBody = 'formatting good';
+
+    const payload: IExampleObject = {
+      id: 1,
+      value: ''
+    };
+
+    // Act
+    server.start().then(() => {
+      request(endpoint, {
+        method: 'POST',
+        body: payload,
+        headers: {
+          "content-type": "application/json",
+        },
+        json: true
+      }, (err, res, body) => {
+        // Assert
+        if (err) {
+          assert.fail(err);
+        } else {
+          assert.equal(res.statusCode, 500, 'Status code not as expected');
+          assert.equal(res.body.name, 'ApplicationError');
+        }
+
+        done();
+      });
+    });
+  });
+
 });

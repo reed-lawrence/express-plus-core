@@ -15,12 +15,22 @@ export class TestController extends ApiController {
 
   @HttpGet()
   public async TestGet({ req, res }: HttpContext) {
-    return Ok(res, 'Hello world');
+    return Ok(res, 'GET works');
+  }
+
+  @HttpPost()
+  public async TestPost({ req, res }: HttpContext) {
+    return Ok(res, 'POST works');
+  }
+
+  @HttpGet({ route: 'OverrideRoute' })
+  public async OverwrittenRoute({ req, res }: HttpContext) {
+    return Ok(res, 'ok');
   }
 
   @HttpPost({ fromBody: ExampleObject })
-  public async TestPost({ req, res }: HttpContext) {
-    return Ok(res, 'Formatting ok');
+  public async PostWithSchemaValidation({ req, res }: HttpContext) {
+    return Ok(res, 'formatting good');
   }
 
   public async shouldNotRegister() {

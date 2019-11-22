@@ -1,6 +1,11 @@
 import { IsInt, Min, Max, IsEmail } from "class-validator";
 
-export class ExampleObject {
+export interface IExampleObject {
+  id: number;
+  value: string;
+}
+
+export class ExampleObject implements IExampleObject {
 
   @IsInt()
   @Min(1)
