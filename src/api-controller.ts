@@ -5,12 +5,7 @@ import { HttpContext } from './http-context';
 import { MetadataKeys } from './metadata-keys';
 import { NoContent } from './return-types';
 
-export interface IApiController {
-  readonly endpoints: IApiEndpoint[];
-  default: (context: HttpContext) => Promise<any>;
-}
-
-export class ApiController implements IApiController {
+export class ApiController {
   public readonly endpoints: ApiEndpoint[];
 
   constructor() {

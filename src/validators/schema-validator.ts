@@ -1,5 +1,5 @@
-import { Dictionary, Request } from 'express-serve-static-core';
 import { validate } from 'class-validator';
+import { Dictionary, Request } from 'express-serve-static-core';
 
 export class SchemaValidator {
 
@@ -24,9 +24,13 @@ export class SchemaValidator {
 
     // Assign the params of the body to the model object to be validated - keys that don't exist on the model will be ignored
     for (const bodyKey in req.body) {
-      for (const objKey in obj) {
-        if (bodyKey === objKey) {
-          obj[objKey] = req.body[bodyKey];
+      if (req.body.hasOwnProperty(bodyKey)) {
+        for (const objKey in obj) {
+          if (obj.hasOwnProperty(objKey)) {
+            if (bodyKey === objKey) {
+              obj[objKey] = req.body[bodyKey];
+            }
+          }
         }
       }
     }
@@ -34,7 +38,7 @@ export class SchemaValidator {
     // Validate the body according to the schema supplied by the object created/passed in from the classRef
     const errors = await validate(obj);
     if (errors.length) {
-      return errors.map(e => e.toString()).toString()
+      return errors.map((e) => e.toString()).toString();
     } else {
       return;
     }

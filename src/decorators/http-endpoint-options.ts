@@ -1,6 +1,6 @@
+import { CorsOptions } from 'cors';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import { Utils } from "../utils";
-import { CorsOptions } from 'cors'
 
 export interface IHttpEndpointOptions {
   route?: string;

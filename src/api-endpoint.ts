@@ -1,6 +1,6 @@
-import {
-    HttpRequestType, IHttpEndpointOptions, IHttpPostOptions
-} from './decorators/http-types.decorator';
+import { IHttpEndpointOptions } from './decorators/http-endpoint-options';
+import { IHttpPostOptions } from './decorators/http-post-options';
+import { HttpRequestType } from './decorators/http-types.decorator';
 import { HttpContext } from './http-context';
 
 export interface IApiEndpoint {

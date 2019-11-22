@@ -10,6 +10,7 @@ export class InvalidController extends ApiController {
   }
 }
 
+// tslint:disable-next-line:max-classes-per-file
 @Controller()
 export class InvalidAuthRoute extends ApiController {
   constructor() {

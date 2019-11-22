@@ -1,15 +1,16 @@
 import cors from 'cors';
 import express from 'express';
-import http from 'http';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
+import http from 'http';
 import multer from 'multer';
 
 import { ApiController } from './api-controller';
 import { ApiEndpoint } from './api-endpoint';
-import {
-  HttpContentType, HttpPostOptions, HttpPutOptions, HttpRequestType
-} from './decorators/http-types.decorator';
-import { DefaultErrorFn } from './error-handlers';
+import { formDataGuardMiddleware, jsonGuardMiddleware, urlEncodedGuardMiddleware } from './content-type-guards';
+import { HttpPostOptions } from './decorators/http-post-options';
+import { HttpPutOptions } from './decorators/http-put-options';
+import { HttpContentType, HttpRequestType } from './decorators/http-types.decorator';
+import { DefaultErrorFn } from './error-handlers/default-err-fn';
 import { routeMapTemplate } from './html/route-map.html';
 import { HttpContext } from './http-context';
 import { MetadataKeys } from './metadata-keys';
@@ -18,9 +19,9 @@ import { Utils } from './utils';
 import { SchemaValidator } from './validators/schema-validator';
 
 export const ServerErrorMessages = {
+  invalidController: 'Controllers must be denoted by the @Controller() decorator',
   invalidRoute: 'Unable to register route. Authenticate was specified in the controller endpoint, but no authentication method was provided by the server or endpoint',
-  invalidController: 'Controllers must be denoted by the @Controller() decorator'
-}
+};
 
 export interface IServerOptions {
   controllers: Array<(new () => ApiController)>;
@@ -32,10 +33,15 @@ export interface IServerOptions {
 }
 
 export class ApiServer {
-  // Main server
+
+  /**
+   * Main express() instance used for the ApiServer
+   */
   public app = express();
 
-
+  /**
+   * The HTTP server instance created by the express app.listen() method
+   */
   public server: http.Server | undefined;
 
   // Multipart/form-data
@@ -44,7 +50,7 @@ export class ApiServer {
   /**
    * Array of ApiControllers to handle
    */
-  public controllers: ApiController[] = new Array<ApiController>();
+  public readonly controllers: ApiController[] = new Array<ApiController>();
 
   /**
    * Route prefix to prepend to each controller/endpoint route
@@ -59,12 +65,12 @@ export class ApiServer {
   /**
    * Array of routes to be listened to by the underlying express instance
    */
-  public routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'HEAD' | 'TRACE' | 'OPTIONS', endpoint: ApiEndpoint }>();
+  public readonly routes = new Array<{ route: string, type: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'HEAD' | 'TRACE' | 'OPTIONS', endpoint: ApiEndpoint }>();
 
   /**
    * The default authentication method to be called by endpoints requiring authentication
    */
-  public readonly authMethod?: (
+  private readonly authMethod?: (
     req: Request<Dictionary<string>>,
     res: Response,
     next: NextFunction) => Promise<void>;
@@ -72,7 +78,7 @@ export class ApiServer {
   /**
    * The default error handler to intercept and handle all application errors
    */
-  public readonly errorHandler = DefaultErrorFn;
+  private readonly errorHandler: express.ErrorRequestHandler = DefaultErrorFn;
 
   /**
    * The server port to listen on
@@ -84,7 +90,7 @@ export class ApiServer {
    */
   public readonly debug: boolean = false;
 
-  public readonly cors?: cors.CorsOptions;
+  private readonly cors?: cors.CorsOptions;
 
   public readonly logging: 'verbose' | 'none' = 'none';
 
@@ -98,7 +104,7 @@ export class ApiServer {
         }
       }
 
-      if (options.logging) this.logging = options.logging;
+      if (options.logging) { this.logging = options.logging; }
 
       if (options.routePrefix) {
         this.routePrefix = '/' + Utils.trimRoute(options.routePrefix);
@@ -123,7 +129,7 @@ export class ApiServer {
    * Start the server instance
    */
   public async start() {
-    return new Promise<void>(async resolve => {
+    return new Promise<void>(async (resolve) => {
       await this.registerControllers(this.controllers);
 
       if (this.debug) {
@@ -131,7 +137,7 @@ export class ApiServer {
           console.log('Server is in debug mode');
         }
         this.app.get('/', (req, res) => {
-          this.buildRouteTable().then(table => {
+          this.buildRouteTable().then((table) => {
             res.send(table);
           });
         });
@@ -155,14 +161,14 @@ export class ApiServer {
     return;
   }
 
-  public async registerControllers(controllers: ApiController[]) {
+  private async registerControllers(controllers: ApiController[]) {
     for (const controller of controllers) {
       if (this.hasControllerDecorator(controller)) {
 
         for (const endpoint of controller.endpoints) {
           const route = `${this.routePrefix}/${controller.getRoute()}/${endpoint.route}`;
 
-          const middleware: (express.RequestHandler)[] = new Array();
+          const middleware: Array<express.RequestHandler | express.ErrorRequestHandler> = new Array();
 
           // CORS middleware
           if (endpoint.options && endpoint.options.cors !== undefined) {
@@ -192,16 +198,24 @@ export class ApiServer {
             }
 
             // Wrapper for unified/customized error handling
-            middleware.push((req, res, next) => {
-              authMethod(req, res, next).then(() => next()).catch((err) => {
-                if (endpoint.options && endpoint.options.errorHandler) {
-                  endpoint.options.errorHandler(err, req, res, next);
-                } else {
-                  this.errorHandler(err, req, res, next);
-                }
-              });
-            });
+            middleware.push(authMethod);
           }
+
+          if (endpoint.options && (endpoint.options instanceof HttpPostOptions || endpoint.options instanceof HttpPutOptions)) {
+            const contentTypeGuard = this.getContentTypeGuard(endpoint);
+            if (contentTypeGuard) {
+              middleware.push(contentTypeGuard);
+            }
+
+            middleware.push(this.getFormatMiddleware(endpoint));
+
+            if (endpoint.options.fromBody) {
+              middleware.push(this.getFromBodyFn(endpoint));
+            }
+          }
+
+          // Error handler
+          const errorHandler = endpoint.options && endpoint.options.errorHandler ? endpoint.options.errorHandler : this.errorHandler;
 
           // This is the function that gets passed to the final controller endpoint
           const contextFn = await this.createContextFn(endpoint);
@@ -209,45 +223,43 @@ export class ApiServer {
           // Register routes
           if (endpoint.type === HttpRequestType.GET) {
 
-            this.routes.push({ route: route, type: 'GET', endpoint: endpoint });
-            this.app.get(route, middleware, contextFn);
+            this.routes.push({ route, type: 'GET', endpoint });
+            this.app.get(route, middleware, errorHandler, contextFn);
 
           } else if (endpoint.type === HttpRequestType.POST) {
 
-            this.routes.push({ route: route, type: 'POST', endpoint: endpoint });
-            middleware.push(this.getFormatMiddleware(endpoint));
-            this.app.post(route, middleware, contextFn);
+            this.routes.push({ route, type: 'POST', endpoint });
+            this.app.post(route, middleware, errorHandler, contextFn);
 
           } else if (endpoint.type === HttpRequestType.PUT) {
 
-            this.routes.push({ route: route, type: 'PUT', endpoint: endpoint });
-            middleware.push(this.getFormatMiddleware(endpoint));
-            this.app.put(route, middleware, contextFn);
+            this.routes.push({ route, type: 'PUT', endpoint });
+            this.app.put(route, middleware, errorHandler, contextFn);
 
           } else if (endpoint.type === HttpRequestType.DELETE) {
 
-            this.routes.push({ route: route, type: 'DELETE', endpoint: endpoint });
-            this.app.delete(route, middleware, contextFn);
+            this.routes.push({ route, type: 'DELETE', endpoint });
+            this.app.delete(route, middleware, errorHandler, contextFn);
 
           } else if (endpoint.type === HttpRequestType.CONNECT) {
 
-            this.routes.push({ route: route, type: 'CONNECT', endpoint: endpoint });
-            this.app.connect(route, middleware, contextFn);
+            this.routes.push({ route, type: 'CONNECT', endpoint });
+            this.app.connect(route, middleware, errorHandler, contextFn);
 
           } else if (endpoint.type === HttpRequestType.HEAD) {
 
-            this.routes.push({ route: route, type: 'HEAD', endpoint: endpoint });
-            this.app.head(route, middleware, contextFn);
+            this.routes.push({ route, type: 'HEAD', endpoint });
+            this.app.head(route, middleware, errorHandler, contextFn);
 
           } else if (endpoint.type === HttpRequestType.OPTIONS) {
 
-            this.routes.push({ route: route, type: 'OPTIONS', endpoint: endpoint });
-            this.app.options(route, middleware, contextFn);
+            this.routes.push({ route, type: 'OPTIONS', endpoint });
+            this.app.options(route, middleware, errorHandler, contextFn);
 
           } else if (endpoint.type === HttpRequestType.TRACE) {
 
-            this.routes.push({ route: route, type: 'TRACE', endpoint: endpoint });
-            this.app.trace(route, middleware, contextFn);
+            this.routes.push({ route, type: 'TRACE', endpoint });
+            this.app.trace(route, middleware, errorHandler, contextFn);
 
           }
         }
@@ -276,31 +288,30 @@ export class ApiServer {
     return false;
   }
 
-  private createContextFn(endpoint: ApiEndpoint) {
-    return async (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
-      const context = new HttpContext(req, res, next);
-
+  private getFromBodyFn(endpoint: ApiEndpoint) {
+    return (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
       // POST & PUT
       if ((endpoint.type === HttpRequestType.POST || endpoint.type === HttpRequestType.PUT) &&
         (endpoint.options instanceof HttpPostOptions || endpoint.options instanceof HttpPutOptions) &&
         endpoint.options.fromBody) {
 
-        const schemaErrors = await SchemaValidator.ValidateBody(req, endpoint.options.fromBody);
-        // console.log(schemaErrors);
-
-        if (schemaErrors) {
-
+        SchemaValidator.ValidateBody(req, endpoint.options.fromBody).then((schemaErrors) => {
           // Schema error handling
-          const err = new Error(schemaErrors);
-          if (endpoint.options.errorHandler) {
-            return endpoint.options.errorHandler(err, req, res, next);
+          if (schemaErrors) {
+            return next(new Error(schemaErrors));
           } else {
-            // this.errorHandler(err, req, res, next);
-            return this.errorHandler(err, req, res, next);
+            return next();
           }
-
-        }
+        });
+      } else {
+        return next();
       }
+    };
+  }
+
+  private createContextFn(endpoint: ApiEndpoint) {
+    return async (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
+      const context = new HttpContext(req, res, next);
 
       // Pass the context onto the endpoint function and handle the errors accordingly
       return endpoint.fn(context).then(() => next()).catch((err) => {
@@ -313,17 +324,39 @@ export class ApiServer {
     };
   }
 
+  private getContentTypeGuard(endpoint: ApiEndpoint) {
+    let contentTypeGuard: express.RequestHandler | undefined;
+    if (endpoint.options && (endpoint.options instanceof HttpPostOptions || endpoint.options instanceof HttpPutOptions) && endpoint.options.contentType) {
+      switch (endpoint.options.contentType) {
+        case HttpContentType.JSON: {
+          contentTypeGuard = jsonGuardMiddleware;
+          break;
+        }
+        case HttpContentType.FormData: {
+          contentTypeGuard = formDataGuardMiddleware;
+          break;
+        }
+        case HttpContentType.UrlEncoded: {
+          contentTypeGuard = urlEncodedGuardMiddleware;
+          break;
+        }
+      }
+    }
+    return contentTypeGuard;
+  }
+
   private getFormatMiddleware(endpoint: ApiEndpoint) {
     let formatMiddleware: express.RequestHandler = express.json();
     if (endpoint.options) {
-      if (endpoint.options instanceof HttpPostOptions && endpoint.options.contentType) {
+      if ((endpoint.options instanceof HttpPostOptions || endpoint.options instanceof HttpPutOptions) && endpoint.options.contentType) {
         switch (endpoint.options.contentType) {
           case HttpContentType.FormData: {
             formatMiddleware = this.multer.none();
             break;
           }
           case HttpContentType.UrlEncoded: {
-            formatMiddleware = express.urlencoded();
+            formatMiddleware = express.urlencoded({ extended: true });
+            break;
           }
         }
       }
@@ -333,7 +366,7 @@ export class ApiServer {
 
   private async buildRouteTable() {
     this.routes.sort((a, b) => a.route > b.route ? 1 : a.route < b.route ? -1 : 0);
-    let table = '<table><tr><th>Request Type</th><th>Route</th><th>Details</th></tr>{{tablebody}}</table>';
+    const table = '<table><tr><th>Request Type</th><th>Route</th><th>Details</th></tr>{{tablebody}}</table>';
     let tableBody = '';
     const endpointRowTemplate = '<tr><td>{{type}}</td><td>{{route}}</td><td>{{details}}</td></tr>';
     for (const route of this.routes) {
@@ -367,7 +400,6 @@ export class ApiServer {
         .replace('{{route}}', route.route)
         .replace('{{details}}', detailcell);
     }
-
 
     return routeMapTemplate.replace('{{routeMap}}', table.replace('{{tablebody}}', tableBody));
   }
