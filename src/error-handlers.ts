@@ -7,11 +7,12 @@ export function DefaultErrorFn(
   res: Response,
   next: NextFunction) {
   if (res.headersSent) {
-    console.log('headers sent')
-    return next(err)
+    // console.log('headers sent');
+    // return next(err);
+    return;
   }
   const status = err instanceof ApplicationError ? err.status : 500;
-  res.status(status).send(new DefaultErrorResponse(err));
+  return res.status(status).send(new DefaultErrorResponse(err));
 }
 
 export interface IDefaultErrorResponse {
