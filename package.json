@@ -3,7 +3,7 @@
   "version": "0.5.13",
   "description": "Descriptive and simplified typescript REST framework built on Express",
   "scripts": {
-    "build": "node build.js && tsc",
+    "build": "node scripts/build.js && tsc",
     "test": "npm run build && mocha ./dist/test/main.js",
     "build-publish": "tsc && npm publish --access public",
     "sandbox": "npm run build && node ./dist/test/sandbox.js"

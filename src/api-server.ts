@@ -137,9 +137,10 @@ export class ApiServer {
           console.log('Server is in debug mode');
         }
         this.app.get('/', (req, res) => {
-          this.buildRouteTable().then((table) => {
-            res.send(table);
-          });
+          // this.buildRouteTable().then((table) => {
+          //   res.send(table);
+          // });
+          res.send(JSON.stringify(this.routes));
         });
       }
 
@@ -166,7 +167,10 @@ export class ApiServer {
       if (this.hasControllerDecorator(controller)) {
 
         for (const endpoint of controller.endpoints) {
-          const route = `${this.routePrefix}/${controller.getRoute()}/${endpoint.route}`;
+          let route = `${this.routePrefix}/${controller.getRoute()}/${endpoint.route}`;
+          if (endpoint.options && endpoint.options.params) {
+            route += `/${Utils.trimRoute(endpoint.options.params)}`;
+          }
 
           const middleware: Array<express.RequestHandler | express.ErrorRequestHandler> = new Array();
 

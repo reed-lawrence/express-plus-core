@@ -16,6 +16,7 @@ export class ApiController {
       const keyVal: IHttpTypeParameters = Reflect.getMetadata(key, this);
       if (key.indexOf('endpoint:') !== -1 && keyVal.type) {
         const fnName = key.split('endpoint:')[1];
+
         this.endpoints.push(new ApiEndpoint({
           fn: this[fnName as Extract<keyof this, string>] as any,
           options: keyVal.options ? keyVal.options : undefined,

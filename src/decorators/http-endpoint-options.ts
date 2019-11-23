@@ -8,6 +8,15 @@ export interface IHttpEndpointOptions {
   authenticate?: boolean;
   authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<any>;
   cors?: CorsOptions | false;
+
+  /**
+   * @summary Route parameters to expect following the specified route. Should
+   * follow the parameter syntax for express routes.
+   * ```typescript
+   * ':id/:page?' // id required, page optional
+   * ```
+   */
+  params?: string;
 }
 
 export class HttpEndpointOptions implements IHttpEndpointOptions {
@@ -16,6 +25,7 @@ export class HttpEndpointOptions implements IHttpEndpointOptions {
   public authenticate?: boolean;
   public authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<any>;
   public cors?: CorsOptions | false;
+  public params?: string;
 
   constructor(init?: IHttpEndpointOptions) {
     if (init) {
@@ -24,6 +34,11 @@ export class HttpEndpointOptions implements IHttpEndpointOptions {
       this.authenticate = init.authenticate || undefined;
       this.authMethod = init.authMethod || undefined;
       this.cors = init.cors || undefined;
+      this.params = init.params || undefined;
+    }
+
+    if (this.route && (this.route.indexOf('?') !== -1 || this.route.indexOf(':') !== -1)) {
+      throw new Error('Route parameters should be supplied via the `params` option');
     }
   }
 }
