@@ -33,8 +33,8 @@ export class TestController extends ApiController {
     return Ok(res, 'ok');
   }
 
-  @HttpGet({ route: 'GetWithParams/:id/:value', params: ":id/:value" })
-  public async GetWithParams({ req, res }: HttpContext<any, { id: string; value: string }>) {
+  @HttpGet({ route: 'GetWithParams', params: ":id/:value?" })
+  public async GetWithParams({ req, res }: HttpContext<any, { id: string; value?: string }>) {
     return Ok(res, req.params);
   }
 
