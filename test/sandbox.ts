@@ -1,9 +1,10 @@
 import { ApiServer } from "../src/api-server";
 import { TestController } from "./controllers/test.controller";
+import { ProductsController } from "./controllers/products-controller";
 
 const server = new ApiServer({ debug: true, port: '8000' }, {
   controllers: [
-    TestController,
+    ProductsController
   ],
   logging: 'verbose',
 });

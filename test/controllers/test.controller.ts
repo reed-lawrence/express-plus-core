@@ -1,7 +1,7 @@
 
 import { ApiController } from '../../src/api-controller';
 import { Controller } from '../../src/decorators/controller.decorator';
-import { HttpContentType, HttpGet, HttpPost } from '../../src/decorators/http-types.decorator';
+import { HttpContentType, HttpGet, HttpPost, HttpPut, HttpDelete } from '../../src/decorators/http-types.decorator';
 import { HttpContext } from '../../src/http-context';
 import { Ok } from '../../src/return-types';
 import { ExampleObject } from '../classes/example-object';

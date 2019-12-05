@@ -12,32 +12,32 @@ export class ApiController {
     this.endpoints = [];
 
     const metadataKeys: string[] = Reflect.getMetadataKeys(this);
+
     for (const key of metadataKeys) {
       const keyVal: IHttpTypeParameters = Reflect.getMetadata(key, this);
       if (key.indexOf('endpoint:') !== -1 && keyVal.type) {
-        const fnName = key.split('endpoint:')[1];
-
+        const fnName = key.split(':')[1];
         this.endpoints.push(new ApiEndpoint({
           fn: this[fnName as Extract<keyof this, string>] as any,
           options: keyVal.options ? keyVal.options : undefined,
-          route: keyVal.options && keyVal.options.route ? keyVal.options.route : fnName,
+          route: keyVal.options && keyVal.options.route ? keyVal.options.route : fnName === 'default' ? '' : fnName,
           type: keyVal.type,
         }));
       }
     }
 
-    if (this.default) {
-      this.endpoints.push(new ApiEndpoint({
-        fn: this.default,
-        route: '',
-        type: HttpRequestType.GET,
-      }));
-    }
+    // if (this.default && defaultOverridden === false) {
+    //   this.endpoints.push(new ApiEndpoint({
+    //     fn: this.default,
+    //     route: '',
+    //     type: HttpRequestType.GET,
+    //   }));
+    // }
 
   }
-  public async default({ req, res }: HttpContext) {
-    return NoContent(res);
-  }
+
+
+  public async default({ req, res }: HttpContext): Promise<any> { };
 
   public getRoute(): string {
     const constructorName: string = Object.getPrototypeOf(this).constructor.name;

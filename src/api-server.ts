@@ -167,7 +167,10 @@ export class ApiServer {
       if (this.hasControllerDecorator(controller)) {
 
         for (const endpoint of controller.endpoints) {
-          let route = `${this.routePrefix}/${controller.getRoute()}/${endpoint.route}`;
+          let route = `${this.routePrefix}/${controller.getRoute()}`;
+          if (endpoint.route) {
+            route += `/${endpoint.route}`;
+          }
           if (endpoint.options && endpoint.options.params) {
             route += `/${Utils.trimRoute(endpoint.options.params)}`;
           }
@@ -270,7 +273,7 @@ export class ApiServer {
 
         if (this.logging === 'verbose') {
           for (const route of this.routes) {
-            console.log(`Route added: [${route.type}] /${route.route}`);
+            console.log(`Route added: [${route.type}] ${route.route}`);
           }
         }
 

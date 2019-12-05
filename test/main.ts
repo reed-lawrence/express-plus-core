@@ -25,22 +25,22 @@ describe('Controller [Class]', () => {
 
   });
 
-  it('Should create default endpoint', () => {
-    // Arrange
-    const controller = new TestController();
+  // it('Should create default endpoint', () => {
+  //   // Arrange
+  //   const controller = new TestController();
 
-    // Act
-    const defEndpoint = controller.endpoints.find((e) => e.route === '');
+  //   // Act
+  //   const defEndpoint = controller.endpoints.find((e) => e.route === '');
 
-    // Assert
-    if (defEndpoint) {
-      assert.equal(defEndpoint.route, '', 'Route not as expected');
-      assert.equal(defEndpoint.type, HttpRequestType.GET, 'Endpoint type not as expected');
-      assert.equal(defEndpoint.fn, controller.default, 'Function not bound correctly to default endpoint');
-    } else {
-      assert.fail('No default endpoint found');
-    }
-  });
+  //   // Assert
+  //   if (defEndpoint) {
+  //     assert.equal(defEndpoint.route, '', 'Route not as expected');
+  //     assert.equal(defEndpoint.type, HttpRequestType.GET, 'Endpoint type not as expected');
+  //     assert.equal(defEndpoint.fn, controller.default, 'Function not bound correctly to default endpoint');
+  //   } else {
+  //     assert.fail('No default endpoint found');
+  //   }
+  // });
 
   it('Should register all endpoints', () => {
     // Arrange

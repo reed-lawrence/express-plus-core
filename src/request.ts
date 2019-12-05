@@ -6,6 +6,7 @@ export interface IRequest<T, U extends IPartialDictionary, Q extends IPartialDic
   body: T;
   params: U;
   query: Q;
+  method: 'GET' | 'POST' | 'CONNECT' | 'HEAD' | 'DELETE' | 'TRACE' | 'PUT' | 'TRACE';
 }
 
 export interface IShape {
