@@ -33,9 +33,14 @@ export class TestController extends ApiController {
     return Ok(res, 'ok');
   }
 
-  @HttpGet({ route: 'GetWithParams', params: ":id/:value?" })
+  @HttpGet({ params: ":id/:value?" })
   public async GetWithParams({ req, res }: HttpContext<any, { id: string; value?: string }>) {
     return Ok(res, req.params);
+  }
+
+  @HttpGet()
+  public async GetWithQuery({ req, res }: HttpContext<any, any, Partial<{ id: string, value: string }>>) {
+    return Ok(res, req.query);
   }
 
   @HttpPost({ fromBody: ExampleObject })

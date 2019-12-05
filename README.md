@@ -85,53 +85,36 @@ hello-world-controller.ts
 example-object.ts
 ```typescript
 export interface IExampleObject {
-  id: number;
-  value: string;
-  phone: string;
+  id?: number;
+  value?: string;
+  phone?: string;
 }
 
 export class ExampleObject implements IExampleObject {
 
-  @Required()
+  @IsRequired()
+  @IsInt()
   public id: number;
 
-  @Required()
-  @StringLength({ min: 1, max: 5 })
+  @IsRequired()
+  @Length(0, 5)
   public value: string;
 
-  @Optional()
-  @RegexMatch(/^[(][0-9]{3}[)][0-9]{3}[-][0-9]{4}$/) // ex: (800)123-4567
+  @IsOptional()
+  @Matches(/^[(][0-9]{3}[)][0-9]{3}[-][0-9]{4}$/) // ex: (800)123-4567
   public phone: string;
 
-  constructor(init?: IExampleObject) {
-    this.id = init ? init.id : 0;
-    this.value = init ? init.value : '';
-    this.phone = init ? init.phone : '';
-  }
 }
 ```
 
 |Input|Result|
 | ------------ | ------------ |
-|`{"id": 1} `| `Missing or undefined property in payload: value` |
-| `{"id": 1, "value": "Hello World"}`  | `Invalid format [StringLength] on value`  |
-| `{"id": 1, "value": "Test", "phone": "8001234567"}` | `Invalid format [Regex] on phone` |
+|`{"id": 1} `| `'value' missing` |
+| `{"id": 1, "value": "Hello World"}`  | `'value' length must be less than or equal to 5`  |
+| `{"id": 1, "value": "Test", "phone": "8001234567"}` | `'phone' format does not match` |
 | `{"id": 1, "value": "Test"}` | `Ok` |
 | `{"id": 1, "value": "Test", "phone": "(800)123-4567"}` | `Ok` |
 
-## Implicit Input Schema Validation
-The `Decorators` such as @Required are completely optional, and simple objects can be passed for lightweight object validation so long as the key exists on the model object and it is assigned a value. 
-
-```typescript
-  @HttpPost({ fromBody: { id: 0, value: '' } })
-  public async TestSchema({ req, res }: HttpContext) {
-    return Ok(res, 'Ok');
-  }
-```
-|Input|Result|
-| ------------ | ------------ |
-|`{"id": 1} `| `Missing or undefined property in payload: value` |
-|`{"id": 1, "value": "test"} `| `Ok` |
 
 # Routing
 
@@ -227,6 +210,18 @@ We can specify routes at the endpoint level as well. Currently this is also the 
 Given all else equal using our `HelloWorldController`, our routes will now look like
 - GET: `{host}/HelloWorld/Test/:id/:value?`
 - POST: `{host}/HelloWorld/CustomPostRoute`
+
+### Specifying Route Parameters
+To add route parameters to an endpoint, simply supply them via the `params` option in your endpoint decorator.
+
+```typescript
+  @HttpGet({ params: ":id/:value?" })
+  public async GetWithParams({ req, res }: HttpContext) {
+    return Ok(res, req.params);
+  }
+```
+
+This will register the route: `GetWithParams/:id/:value?` to our controller, requiring the `id` parameter and `value` being optional. A good practice is to pass the `ParamType` to the `HttpContext` and get full type-hinting of your `req.params`.
 
 # Middleware
 One of the goals of Express+ is to cut down on the verbosity of the middleware stack for endpoints. Here are some examples of built-in middleware functions.
@@ -413,8 +408,8 @@ You can optionally pass `false` to this endpoint parameter option if you want to
 All Express+ `Endpoints` are expected to allow the same argument of `HttpContext`. This is a basic wrapper class that contains the `Request` and `Response` of the incoming http request.
 
 ```typescript
-  @HttpGet({ route: 'Test/:id' })
-  public async Test({ req, res }: HttpContext) {
+  @HttpGet({ route: 'Test', params: ':id' })
+  public async Test({ req, res }: HttpContext<any, { id: string }>) {
     if(req.params.id === '1'){
       return Ok(res, 'Received One');
     } else if(req.params.id === '2'){
@@ -428,6 +423,41 @@ All Express+ `Endpoints` are expected to allow the same argument of `HttpContext
 > Q: Why is there no `next` arugment in `HttpContext`
 
 Your `Endpoint` method should be the last method in the stack at the provided route. This is one of the few opinionated assumptions made by Express+.
+
+### Request Type Hinting
+The `HttpContext` class contains optional Type parameters to supply to get compile-time type-hinting: `HttpContext<BodyType, ParamsType, QueryType>`
+
+These types are applied to the `req.body` `req.params` and `req.query` respectively.
+
+**Get body type**
+```typescript
+  @HttpPost({ fromBody: ExampleObject })
+  public async PostWithSchemaValidation({ req, res }: HttpContext<ExampleObject>) {
+    return Ok(res, 'formatting good');
+  }
+```
+
+In this example we pass the `ExampleObject` used earlier to ensure type-hinting and intellisense when accessing the `req.body` from this point forward. In this case we can trust the data because `ExampleObject` is being validated via the `fromBody` option passed into the `@HttpPost` decorator.
+
+**Get URL Params**:
+```typescript
+  @HttpGet({ params: ":id/:value?" })
+  public async GetWithParams({ req, res }: HttpContext<any, { id: string; value?: string }>) {
+    return Ok(res, req.params);
+  }
+```
+When we pass `{ id: string; value?: string }` into the `ParamsType` of the `HttpContext` our `req.params` type hinting works as expected.
+
+**Get URL query string**:
+```typescript
+  @HttpGet()
+  public async GetWithQuery({ req, res }: HttpContext<any, any, Partial<{ id: string, value: string }>>) {
+    return Ok(res, req.query);
+  }
+```
+
+In this example, `Partial<{ id: string, value: string }>` is supplied to the `QueryType` of our `HttpContext`. This allows our `req.query` parameter to have full type hinting and intellisense. We use the `Partial<T>` [utility type](https://www.typescriptlang.org/docs/handbook/utility-types.html "utility type") because our query strings should be treated as untrusted.
+
 
 # Return Methods
 Express+ provdes return type wrapper methods to automatically handle the response of your `Endpoints`. It should be noted these are entirely optional. 
@@ -494,7 +524,3 @@ const server = new Server(
 
 server.start();
 ```
-
-
-
-

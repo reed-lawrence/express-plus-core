@@ -23,15 +23,9 @@ export class SchemaValidator {
     }
 
     // Assign the params of the body to the model object to be validated - keys that don't exist on the model will be ignored
-    for (const bodyKey in req.body) {
-      if (req.body.hasOwnProperty(bodyKey)) {
-        for (const objKey in obj) {
-          if (obj.hasOwnProperty(objKey)) {
-            if (bodyKey === objKey) {
-              obj[objKey] = req.body[bodyKey];
-            }
-          }
-        }
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        obj[key] = req.body[key];
       }
     }
 

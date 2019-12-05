@@ -275,7 +275,8 @@ describe('Server', () => {
 
     const payload: IExampleObject = {
       id: 1,
-      value: 'test@test.net',
+      phone: '(800)123-4567',
+      value: 'Test',
     };
 
     // Act
@@ -311,8 +312,7 @@ describe('Server', () => {
 
     const payload: IExampleObject = {
       id: 1,
-      value: '',
-    };
+    } as any;
 
     // Act
     server.start().then(() => {
