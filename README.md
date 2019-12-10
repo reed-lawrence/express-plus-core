@@ -541,11 +541,12 @@ public async neverAccess({ req, res }: HttpContext) {
 Will return the following HTTP response unless the default error handler is overwritten: 
 ```json
 status: 403
-body: {
-			  "name": "ForbiddenError",
-			  "message": "This should never be accessed",
-			  "status": 403
-		  }
+body: 
+{
+	"name": "ForbiddenError",
+	"message": "This should never be accessed",
+	"status": 403
+}
 ```
 
 # Environments
