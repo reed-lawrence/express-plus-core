@@ -1,4 +1,5 @@
-import { Min } from 'class-validator';
+import { Min, IsNumber, IsString } from 'class-validator';
+import { IsRequired } from '../../src/validators/is-required';
 
 export interface IProduct {
   id: number;
@@ -8,12 +9,20 @@ export interface IProduct {
 }
 
 export class Product implements IProduct {
+  @IsRequired()
+  @IsNumber()
   id: number = 0;
+
+  @IsRequired()
+  @IsString()
   name: string = '';
 
   @Min(0)
+  @IsNumber()
   price: number = 0;
 
+  @IsRequired()
+  @IsString()
   category: string = '';
 
   constructor(init?: Partial<IProduct>) {

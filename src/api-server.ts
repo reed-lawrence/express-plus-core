@@ -99,8 +99,11 @@ export class ApiServer {
     this.debug = env.debug;
     if (options) {
       if (options.controllers) {
+        let controllerId = 1;
         for (const controllerConstructor of options.controllers) {
           this.controllers.push(new controllerConstructor());
+          this.controllers[this.controllers.length - 1].controller_id = controllerId;
+          controllerId++;
         }
       }
 
@@ -165,6 +168,7 @@ export class ApiServer {
   private async registerControllers(controllers: ApiController[]) {
     for (const controller of controllers) {
       if (this.hasControllerDecorator(controller)) {
+        controller.registerEndpoints();
 
         for (const endpoint of controller.endpoints) {
           let route = `${this.routePrefix}/${controller.getRoute()}`;
@@ -225,7 +229,7 @@ export class ApiServer {
           const errorHandler = endpoint.options && endpoint.options.errorHandler ? endpoint.options.errorHandler : this.errorHandler;
 
           // This is the function that gets passed to the final controller endpoint
-          const contextFn = await this.createContextFn(endpoint);
+          const contextFn = await this.createContextFn(controller, endpoint);
 
           // Register routes
           if (endpoint.type === HttpRequestType.GET) {
@@ -316,19 +320,44 @@ export class ApiServer {
     };
   }
 
-  private createContextFn(endpoint: ApiEndpoint) {
-    return async (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
-      const context = new HttpContext(req, res, next);
+  private createContextFn<C extends ApiController>(controller: C, endpoint: ApiEndpoint) {
+    // Get the index of the corresponding controller
+    // Do this, because otherwise creating a generic function messes with the `this` property in the controller
+    let cIndex = this.controllers.findIndex(c => c.controller_id === controller.controller_id);
+    if (cIndex === -1) {
+      throw new Error('Unable to find matching controller corresponding to endpoint');
+    }
 
-      // Pass the context onto the endpoint function and handle the errors accordingly
-      return endpoint.fn(context).then(() => next()).catch((err) => {
-        if (endpoint.options && endpoint.options.errorHandler) {
-          return endpoint.options.errorHandler(err, req, res, next);
-        } else {
-          return this.errorHandler(err, req, res, next);
-        }
-      });
-    };
+    if (!endpoint.fnName) {
+      throw new Error('endpoint funtion name is not defined');
+    }
+
+    if (typeof this.controllers[cIndex][endpoint.fnName] !== 'function') {
+      const protoName = this.controllers[cIndex].prototype.name;
+      throw new Error(`The endpoint function ${endpoint.fnName} on ${protoName} is not a function`);
+    }
+
+    // Return a new function that accepts the expexted express arguments
+    return (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => {
+
+      // When called, pass the express arguments into an HttpContext and pass that into the mapped fn
+      const fnResult = this.controllers[cIndex][endpoint.fnName as string](new HttpContext(req, res, next));
+
+      // Check if the function is returning an async promise
+      if (fnResult instanceof Promise) {
+
+        // Handle the errors or pass the function on
+        fnResult.then(() => next()).catch((err) => {
+          if (endpoint.options && endpoint.options.errorHandler) {
+            return endpoint.options.errorHandler(err, req, res, next);
+          } else {
+            return this.errorHandler(err, req, res, next);
+          }
+        });
+      } else {
+        console.warn(`function at ${endpoint.fnName} is performing synchronously`);
+      }
+    }
   }
 
   private getContentTypeGuard(endpoint: ApiEndpoint) {

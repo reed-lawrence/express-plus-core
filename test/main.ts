@@ -55,6 +55,7 @@ describe('Controller [Class]', () => {
     // Assert
     if (postEndpoint) {
       assert.equal(postEndpoint.type, HttpRequestType.POST, 'Post endpoint not of POST request enum');
+      //@ts-ignore
       assert.equal(postEndpoint.fn, controller.TestPost, 'Function not bound correctly to POST endpoint');
     } else {
       assert.fail('Post endpoint not created');
@@ -62,6 +63,7 @@ describe('Controller [Class]', () => {
 
     if (getEndpoint) {
       assert.equal(getEndpoint.type, HttpRequestType.GET, 'Post endpoint not of POST request enum');
+      //@ts-ignore
       assert.equal(getEndpoint.fn, controller.TestGet, 'Function not bound correctly to POST endpoint');
     } else {
       assert.fail('Get endpoint not created');
@@ -74,6 +76,7 @@ describe('Controller [Class]', () => {
     const controller = new TestController();
 
     // Assert
+    //@ts-ignore
     assert.equal(controller.endpoints.findIndex((e) => e.fn === controller.shouldNotRegister) === -1, true);
   });
 
@@ -125,6 +128,7 @@ describe('Server [Class]', () => {
     // Assert
     if (getEndpoint) {
       assert.equal(getEndpoint.type === 'GET', true, 'TestGet route not to GET type');
+      //@ts-ignore
       assert.equal(getEndpoint.endpoint.fn, controller.TestGet, 'Registered route does not have same function instance');
     } else {
       assert.equal(server.routes, [], 'Routes not as expected');

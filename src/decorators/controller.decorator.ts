@@ -5,13 +5,16 @@ import { Utils } from '../utils';
 
 export interface IControllerOptions {
   route?: string;
+  preseveCase?: boolean;
 }
 
 export class ControllerOptions implements IControllerOptions {
   public route?: string;
+  public preseveCase?: boolean = false;
 
   constructor(init?: IControllerOptions) {
     if (init) {
+      this.preseveCase = init.preseveCase || false;
       this.route = init.route || undefined;
     }
 

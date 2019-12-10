@@ -33,8 +33,8 @@ Table of Contents
 
 # Simplified Endpoints
 In the following example, we bind a GET and POST Method to the following routes
-- GET: {host}/HelloWorld/Test
-- POST: {host}/HelloWorld/TestSchema
+- GET: {host}/helloworld/test
+- POST: {host}/helloworld/testSchema
 
 hello-world-controller.ts:
 ```typescript
@@ -46,12 +46,12 @@ export class HelloWorldController extends ApiController {
   }
 
   @HttpGet()
-  public async Test({ req, res }: HttpContext) {
+  public async test({ req, res }: HttpContext) {
     return Ok(res, 'Hello World!');
   }
 
   @HttpPost({ fromBody: ExampleObject })
-  public async TestSchema({ req, res }: HttpContext) {
+  public async testSchema({ req, res }: HttpContext) {
     return Ok(res, 'Post Received');
   }
 }
@@ -67,8 +67,8 @@ const server = new Server(
   });
 
 server.start();
-// Log: endpoint added at: /HelloWorld/Test
-// Log: endpoint added at: /HelloWorld/TestSchema
+// Log: endpoint added at: /helloworld/test
+// Log: endpoint added at: /helloworld/testSchema
 ```
 # Input Validation
 ## Explicit Input Schema Validation
@@ -77,7 +77,7 @@ Express+ allows for run-time schema validaton on HTTP POST and PUT requests with
 hello-world-controller.ts
 ```typescript
   @HttpPost({ fromBody: ExampleObject })
-  public async TestSchema({ req, res }: HttpContext) {
+  public async testSchema({ req, res }: HttpContext) {
     return Ok(res, 'Post Received');
   }
 ```
@@ -119,9 +119,9 @@ export class ExampleObject implements IExampleObject {
 # Routing
 
 ## Implicit Route Handling
-By default, routes are handled implcitly. Assume our default route is `{host}/`
+By default, routes are handled implcitly. Assume our default route is `{host}/`.
 
-The first route parameter is handled by the name of the controller. With the following code in `hello-world-controller.ts` we infer all the endpoints within this controller to be prefixed with `HelloWorld` because of the naming convention of the controller combined with the decorator `@Controller`
+The first route parameter is handled by the name of the controller. With the following code in `hello-world-controller.ts` we infer all the endpoints within this controller to be prefixed with `helloworld` because of the naming convention of the controller combined with the decorator `@Controller`
 
 ```typescript
 @Controller()
@@ -139,19 +139,19 @@ To declare an endpoint, we simply add a method in our `Controller` with any of t
 
 ```typescript
   @HttpGet()
-  public async Test({ req, res }: HttpContext) {
+  public async test({ req, res }: HttpContext) {
     return Ok(res, 'Hello World!');
   }
 
   @HttpPost()
-  public async TestSchema({ req, res }: HttpContext) {
+  public async testSchema({ req, res }: HttpContext) {
     return Ok(res, 'Ok');
   }
 ```
 
 With these endpoints delcared inside our `HelloWorldController`, we have the following routes: 
-- GET: `{host}/HelloWorld/Test`
-- POST: `{host}/HelloWorld/TestSchema`
+- GET: `{host}/helloworld/test`
+- POST: `{host}/helloworld/testSchema`
 
 ## Explicit Route Handling
 
@@ -171,14 +171,14 @@ const server = new Server(
   });
 ```
 Given all else equal, our routes will now look like:
-- GET: `{host}/api/HelloWorld/Test`
-- POST: `{host}/api/HelloWorld/TestSchema`
+- GET: `{host}/api/helloworld/test`
+- POST: `{host}/api/helloworld/testSchema`
 
 ### Controller Level Routing
-We can also optionally specify routes at a controller level by specifying a route in the `@Controller` decorator
+We can also optionally specify routes at a controller level by specifying a route in the `@Controller` decorator. The `preserveCase` parameter, allows for the route case to be preserved as-is. Otherwise, the controller route is converted to lowercase.
 
 ```typescript
-@Controller({route: 'v1/MyController'})
+@Controller({route: 'v1/MyController', preserveCase: true })
 export class HelloWorldController extends ApiController {
 
   constructor() {
@@ -188,28 +188,27 @@ export class HelloWorldController extends ApiController {
 ```
 
 Given all else equal, our routes will now look like
-- GET: `{host}/v1/MyController/Test`
-- POST: `{host}/v1/MyController/TestSchema`
+- GET: `{host}/v1/MyController/test`
+- POST: `{host}/v1/MyController/testSchema`
 
 ### Endpoint Level Routing
 We can specify routes at the endpoint level as well. Currently this is also the only way to pass route parameter expextations as well.
 
 ```typescript
-  @HttpGet({ route: 'Test/:id/:value?' })
-  public async Test({ req, res }: HttpContext) {
-    return Ok(res, req.params);
+  @HttpGet()
+  public async test({ req, res }: HttpContext) {
+    return Ok(res, 'Ok');
   }
 
   @HttpPost({ route: 'CustomPostRoute' })
-  public async TestSchema({ req, res }: HttpContext) {
-    console.log('TestSchema called');
+  public async testSchema({ req, res }: HttpContext) {
     return Ok(res, 'Ok');
   }
 ```
 
 Given all else equal using our `HelloWorldController`, our routes will now look like
-- GET: `{host}/HelloWorld/Test/:id/:value?`
-- POST: `{host}/HelloWorld/CustomPostRoute`
+- GET: `{host}/helloworld/test`
+- POST: `{host}/helloworld/CustomPostRoute`
 
 ### Specifying Route Parameters
 To add route parameters to an endpoint, simply supply them via the `params` option in your endpoint decorator.
@@ -222,6 +221,53 @@ To add route parameters to an endpoint, simply supply them via the `params` opti
 ```
 
 This will register the route: `GetWithParams/:id/:value?` to our controller, requiring the `id` parameter and `value` being optional. A good practice is to pass the `ParamType` to the `HttpContext` and get full type-hinting of your `req.params`.
+
+### Accepting Multiple HTTP Methods
+Good REST API design practices call for dictating CRUD (create, read, update delete) operations to be dictated on each route.
+
+In Express+ we can easily handle overloading the same route endpoint to accept multiple HTTP methods.
+
+| Route | Method | Action |
+| ------------ | ------------ | ------------ |
+| `/products` | GET | Returns list of Products |
+| `/products/:id` | GET | Returns specific Product |
+|`/products`|POST|Creates a new Product|
+|`/products`|PUT|Updates a Product|
+|`/products/:id`|DELETE|Deletes a specific Product|
+
+```typescript
+@Controller()
+export class ProductsController extends ApiController {
+
+  constructor() {
+    super();
+  }
+
+  @HttpGet({ params: ':id?' })
+  @HttpDelete({ params: ':id' })
+  @HttpPost({ fromBody: Product })
+  @HttpPut({ fromBody: Product })
+  public async default({ req, res }: HttpContext<Product>) {
+    switch (req.method) {
+      case 'GET': {
+        return Ok(res, await this.getProducts(req.params.id));
+      }
+      case 'POST': {
+        return Ok(res, await this.createProduct(req.body, this.products));
+      }
+      case 'PUT': {
+        return Ok(res, await this.updateProduct(req.body, this.products));
+      }
+      case 'DELETE': {
+        return Ok(res, await this.deleteProduct(req.params.id, this.products));
+      }
+    }
+  }
+}
+```
+
+In the above example, we overload the `default` route which is mapped to the route specified by the `Controller`. Each decorator is handled just as it would if it was dictated in a separate function. For example, only the `POST` and `PUT` methods will validate the body, and only the `GET` and `DELETE` methods will accept an id in the URL.
+
 
 # Middleware
 One of the goals of Express+ is to cut down on the verbosity of the middleware stack for endpoints. Here are some examples of built-in middleware functions.
@@ -343,10 +389,9 @@ const server = new Server(
     ],
     errorHandler: (err, req, res, next) => {
       if (res.headersSent) {
-        return next(err)
+        return;
       }
-      res.status(500)
-      res.render('error', { error: err })
+      return res.status(500).send({name: 'CustomError', message: err.message});
     }
   });
 
@@ -482,7 +527,25 @@ Express+ return methods include:
 |NoContent|204|No|
 |NotModified|304|Yes|
 
+### Returning bad requests
+Return bad requests by throwing one of the provided `Error` objects. These types throw a status code that corresponds to the HTTP status code name, and format the response accordingly via the default error handler.
 
+```typescript
+@HttpGet()
+public async neverAccess({ req, res }: HttpContext) {
+   throw new ForbiddenError('This route should never be accessed');
+}
+```
+
+Will return the following HTTP response unless the default error handler is overwritten: 
+```json
+status: 403
+body: {
+			  "name": "ForbiddenError",
+			  "message": "This should never be accessed",
+			  "status": 403
+		  }
+```
 
 # Environments
 Express+ offers simple solutions to handling environment variables.
