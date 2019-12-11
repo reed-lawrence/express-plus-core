@@ -1,11 +1,13 @@
 {
   "name": "@express-plus/core",
-  "version": "0.5.13",
+  "version": "0.6.3",
   "description": "Descriptive and simplified typescript REST framework built on Express",
   "scripts": {
-    "build": "node scripts/build.js && tsc",
+    "build": "node scripts/clean-dist.js && tsc",
+    "build:prod": "npm run build && node scripts/pre-publish.js",
     "test": "npm run build && mocha ./dist/test/main.js",
-    "build-publish": "tsc && npm publish --access public",
+    "publish:release": "npm run build:prod && cd ./dist && npm publish --access public",
+    "publish:beta": "npm run build:prod && cd ./dist && npm publish --access public --tag beta",
     "sandbox": "npm run build && node ./dist/test/sandbox.js"
   },
   "repository": {
@@ -20,23 +22,19 @@
     "express": "^4.17.1",
     "multer": "^1.4.2",
     "reflect-metadata": "^0.1.13",
-    "typescript": "^3.7.2"
+    "typescript": "^3.7.2",
+    "@types/cors": "^2.8.6",
+    "@types/express": "^4.17.1"
   },
   "devDependencies": {
     "@types/assert": "^1.4.3",
-    "@types/cors": "^2.8.6",
-    "@types/express": "^4.17.1",
     "@types/mocha": "^5.2.7",
     "@types/multer": "^1.3.10",
     "@types/request": "^2.48.3",
     "assert": "^2.0.0",
+    "fs-extra": "^8.1.0",
     "mocha": "^6.2.2",
     "request": "^2.88.0",
     "tslint": "^5.20.0"
-  },
-  "files": [
-    "dist/**/*"
-  ],
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts"
+  }
 }

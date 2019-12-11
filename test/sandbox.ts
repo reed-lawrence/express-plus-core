@@ -5,8 +5,7 @@ import { ProductsController } from "./controllers/products-controller";
 const server = new ApiServer({ debug: true, port: '8000' }, {
   controllers: [
     ProductsController
-  ],
-  logging: 'verbose',
+  ]
 });
 const endpoint = 'http://localhost:8000/Test/TestGet';
 

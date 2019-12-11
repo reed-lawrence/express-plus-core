@@ -14,7 +14,7 @@ import { DefaultErrorFn } from './error-handlers/default-err-fn';
 import { routeMapTemplate } from './html/route-map.html';
 import { HttpContext } from './http-context';
 import { MetadataKeys } from './metadata-keys';
-import { IServerEnvironment } from './server-environment';
+import { IServerEnvironment, ServerEnvironment } from './server-environment';
 import { Utils } from './utils';
 import { SchemaValidator } from './validators/schema-validator';
 
@@ -23,13 +23,18 @@ export const ServerErrorMessages = {
   invalidRoute: 'Unable to register route. Authenticate was specified in the controller endpoint, but no authentication method was provided by the server or endpoint',
 };
 
+export enum LoggingLevel {
+  none = 1,
+  limited,
+  verbose
+}
+
 export interface IServerOptions {
   controllers: Array<(new () => ApiController)>;
   routePrefix?: string;
   errorHandler?: (err: any, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
   authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<void>;
   cors?: cors.CorsOptions;
-  logging?: 'verbose' | 'none';
 }
 
 export class ApiServer {
@@ -92,11 +97,14 @@ export class ApiServer {
 
   private readonly cors?: cors.CorsOptions;
 
-  public readonly logging: 'verbose' | 'none' = 'none';
+  public readonly logging: LoggingLevel = LoggingLevel.limited;
 
   constructor(env: IServerEnvironment, options?: IServerOptions) {
-    this.port = env.port;
-    this.debug = env.debug;
+    const envVars = new ServerEnvironment(env);
+    this.port = envVars.port;
+    this.debug = envVars.debug;
+    this.logging = envVars.logging;
+
     if (options) {
       if (options.controllers) {
         let controllerId = 1;
@@ -106,8 +114,6 @@ export class ApiServer {
           controllerId++;
         }
       }
-
-      if (options.logging) { this.logging = options.logging; }
 
       if (options.routePrefix) {
         this.routePrefix = '/' + Utils.trimRoute(options.routePrefix);
@@ -136,7 +142,7 @@ export class ApiServer {
       await this.registerControllers(this.controllers);
 
       if (this.debug) {
-        if (this.logging === 'verbose') {
+        if (this.logging > LoggingLevel.none) {
           console.log('Server is in debug mode');
         }
         this.app.get('/', (req, res) => {
@@ -148,7 +154,7 @@ export class ApiServer {
       }
 
       this.server = this.app.listen(this.port, () => {
-        if (this.logging === 'verbose') {
+        if (this.logging > LoggingLevel.none) {
           console.log(`Listening on port ${this.port}`);
         }
         resolve();
@@ -187,7 +193,7 @@ export class ApiServer {
               middleware.push(cors(endpoint.options.cors));
             } else if (endpoint.options.cors === false) {
               // if endpoint.options.cors is explicitly false then don't register any cors policy to this route
-              if (this.logging === 'verbose') {
+              if (this.logging === LoggingLevel.verbose) {
                 console.log(`Cors policy explicitly ignored for route: ${route}`);
               }
             }
@@ -275,7 +281,7 @@ export class ApiServer {
           }
         }
 
-        if (this.logging === 'verbose') {
+        if (this.logging === LoggingLevel.verbose) {
           for (const route of this.routes) {
             console.log(`Route added: [${route.type}] ${route.route}`);
           }
