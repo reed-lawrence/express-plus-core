@@ -1,12 +1,11 @@
-import { Controller } from "../../src/decorators/controller.decorator";
 import { ApiController } from "../../src/api-controller";
+import { Controller } from "../../src/decorators/controller.decorator";
+import { HttpDelete, HttpGet, HttpPost, HttpPut } from "../../src/decorators/http-types.decorator";
+import { ApplicationError } from "../../src/error-handlers/application-error";
+import { BadRequestError } from "../../src/error-handlers/bad-request-error";
 import { HttpContext } from "../../src/http-context";
 import { Ok } from "../../src/return-types";
-import { HttpGet, HttpDelete, HttpPost, HttpPut } from "../../src/decorators/http-types.decorator";
 import { Product } from '../classes/product';
-import { BadRequestError } from "../../src/error-handlers/bad-request-error";
-import { ApplicationError } from "../../src/error-handlers/application-error";
-import { ForbiddenError } from "../../src/error-handlers/forbidden-error";
 
 @Controller()
 export class ProductsController extends ApiController {
@@ -17,17 +16,17 @@ export class ProductsController extends ApiController {
 
   private products: Product[] = [
     new Product({ id: 1, name: 'Tomato Soup', price: 199, category: 'Groceries' }),
-    new Product({ id: 2, name: 'Hammer', price: 1499, category: 'Home Improvement' })
+    new Product({ id: 2, name: 'Hammer', price: 1499, category: 'Home Improvement' }),
   ];
 
   private async getProducts(id?: string) {
     if (id) {
-      const toFind = parseInt(id);
+      const toFind = parseInt(id, 10);
       if (isNaN(toFind)) {
-        throw new ApplicationError(`Supplied id to get is not a numeric value`)
+        throw new ApplicationError(`Supplied id to get is not a numeric value`);
       }
 
-      const product = this.products.find(p => p.id === toFind);
+      const product = this.products.find((p) => p.id === toFind);
       if (product) {
         return product as Product;
       } else {
@@ -40,7 +39,7 @@ export class ProductsController extends ApiController {
 
   private async createProduct(payload: Product, products: Product[]) {
     for (let i = 1; i <= (products.length + 1); i++) {
-      if (products.findIndex(p => p.id === i) === -1) {
+      if (products.findIndex((p) => p.id === i) === -1) {
         payload.id = i;
         products.push(payload);
         return payload;
@@ -50,7 +49,7 @@ export class ProductsController extends ApiController {
   }
 
   private async updateProduct(payload: Product, products: Product[]) {
-    const index = products.findIndex(p => p.id === payload.id);
+    const index = products.findIndex((p) => p.id === payload.id);
     if (index === -1) {
       throw new ApplicationError(`Unable to find matching product corresponding to id: ${payload.id}`);
     }
@@ -59,12 +58,12 @@ export class ProductsController extends ApiController {
   }
 
   private async deleteProduct(id: string, products: Product[]) {
-    const toFind = parseInt(id);
+    const toFind = parseInt(id, 10);
     if (isNaN(toFind)) {
-      throw new ApplicationError(`Supplied id to delete is not a numeric value`)
+      throw new ApplicationError(`Supplied id to delete is not a numeric value`);
     }
 
-    const index = products.findIndex(p => p.id === toFind);
+    const index = products.findIndex((p) => p.id === toFind);
     if (index === -1) {
       throw new ApplicationError(`Unable to find matching product corresponding to id: ${toFind}`);
     }

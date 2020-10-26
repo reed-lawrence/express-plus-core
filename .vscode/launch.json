@@ -7,8 +7,8 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Program",
-      "program": "${workspaceFolder}/dist/test/sandbox.js",
+      "name": "Launch Debugger",
+      "program": "${workspaceFolder}/dist/test/debug.js",
       "outFiles": [
         "${workspaceFolder}/dist/*.js"
       ],

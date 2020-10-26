@@ -1,4 +1,8 @@
 const fs = require('fs-extra');
 
 console.log('build.js: Removing output directory');
-fs.rmdirSync('./dist', { recursive: true });
+if (fs.existsSync('./dist')) {
+  fs.removeSync('./dist', {
+    recursive: true
+  });
+}

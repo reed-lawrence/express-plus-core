@@ -8,8 +8,9 @@
         "no-console": false,
         "quotemark": ["single"],
         "max-line-length":false,
-        "member-ordering":false
-
+        "member-ordering":false,
+        "variable-name":false,
+        "no-empty":false
     },
     "rulesDirectory": []
 }

@@ -26,7 +26,7 @@ export const ServerErrorMessages = {
 export enum LoggingLevel {
   none = 1,
   limited,
-  verbose
+  verbose,
 }
 
 export interface IServerOptions {
@@ -291,6 +291,7 @@ export class ApiServer {
         throw new Error(ServerErrorMessages.invalidController);
       }
     }
+    return;
   }
 
   private hasControllerDecorator(controller: ApiController) {
@@ -329,7 +330,7 @@ export class ApiServer {
   private createContextFn<C extends ApiController>(controller: C, endpoint: ApiEndpoint) {
     // Get the index of the corresponding controller
     // Do this, because otherwise creating a generic function messes with the `this` property in the controller
-    let cIndex = this.controllers.findIndex(c => c.controller_id === controller.controller_id);
+    const cIndex = this.controllers.findIndex((c) => c.controller_id === controller.controller_id);
     if (cIndex === -1) {
       throw new Error('Unable to find matching controller corresponding to endpoint');
     }
@@ -363,7 +364,7 @@ export class ApiServer {
       } else {
         console.warn(`function at ${endpoint.fnName} is performing synchronously`);
       }
-    }
+    };
   }
 
   private getContentTypeGuard(endpoint: ApiEndpoint) {

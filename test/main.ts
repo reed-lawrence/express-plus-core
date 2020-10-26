@@ -2,12 +2,13 @@ import assert, { fail } from 'assert';
 import { afterEach, describe, it } from 'mocha';
 import 'reflect-metadata';
 import request from 'request';
-import { ApiServer, ServerErrorMessages } from '../src/api-server';
+import { ApiServer, LoggingLevel, ServerErrorMessages } from '../src/api-server';
 import { ControllerOptions } from '../src/decorators/controller.decorator';
 import { HttpRequestType } from '../src/decorators/http-types.decorator';
 import { MetadataKeys } from '../src/metadata-keys';
+import { IServerEnvironment } from '../src/server-environment';
 import { IExampleObject } from './classes/example-object';
-import { InvalidAuthRoute, InvalidController } from './controllers/bad-controllers';
+import { InvalidAuthRouteController, InvalidController } from './controllers/bad-controllers';
 import { CustomRouteController } from './controllers/custom-route.controller';
 import { TestController } from './controllers/test.controller';
 
@@ -25,50 +26,31 @@ describe('Controller [Class]', () => {
 
   });
 
-  // it('Should create default endpoint', () => {
-  //   // Arrange
-  //   const controller = new TestController();
-
-  //   // Act
-  //   const defEndpoint = controller.endpoints.find((e) => e.route === '');
-
-  //   // Assert
-  //   if (defEndpoint) {
-  //     assert.equal(defEndpoint.route, '', 'Route not as expected');
-  //     assert.equal(defEndpoint.type, HttpRequestType.GET, 'Endpoint type not as expected');
-  //     assert.equal(defEndpoint.fn, controller.default, 'Function not bound correctly to default endpoint');
-  //   } else {
-  //     assert.fail('No default endpoint found');
-  //   }
-  // });
-
-  it('Should register all endpoints', () => {
+  it('Should register all endpoints', async () => {
     // Arrange
     const controller = new TestController();
     const postRoute = 'TestPost';
     const getRoute = 'TestGet';
 
     // Act
+    await controller.registerEndpoints();
     const postEndpoint = controller.endpoints.find((e) => e.route === postRoute);
     const getEndpoint = controller.endpoints.find((e) => e.route === getRoute);
 
     // Assert
     if (postEndpoint) {
       assert.equal(postEndpoint.type, HttpRequestType.POST, 'Post endpoint not of POST request enum');
-      //@ts-ignore
-      assert.equal(postEndpoint.fn, controller.TestPost, 'Function not bound correctly to POST endpoint');
+      assert.equal(postEndpoint.fnName, controller.TestPost.name, 'Function not bound correctly to POST endpoint');
     } else {
       assert.fail('Post endpoint not created');
     }
 
     if (getEndpoint) {
       assert.equal(getEndpoint.type, HttpRequestType.GET, 'Post endpoint not of POST request enum');
-      //@ts-ignore
-      assert.equal(getEndpoint.fn, controller.TestGet, 'Function not bound correctly to POST endpoint');
+      assert.equal(getEndpoint.fnName, controller.TestGet.name, 'Function not bound correctly to POST endpoint');
     } else {
       assert.fail('Get endpoint not created');
     }
-
   });
 
   it('Should not register non-decorated class methods', () => {
@@ -76,8 +58,7 @@ describe('Controller [Class]', () => {
     const controller = new TestController();
 
     // Assert
-    //@ts-ignore
-    assert.equal(controller.endpoints.findIndex((e) => e.fn === controller.shouldNotRegister) === -1, true);
+    assert.equal(controller.endpoints.findIndex((e) => e.fnName === controller.shouldNotRegister.name) === -1, true);
   });
 
   it('Should assign custom route metadata', () => {
@@ -100,9 +81,10 @@ describe('Controller [Class]', () => {
 });
 
 describe('Server [Class]', () => {
+  const env: IServerEnvironment = { port: '8000', debug: true, logging: LoggingLevel.none };
   it('Constructor should register basic params', () => {
     // Arrange + Act
-    const server = new ApiServer({ debug: true, port: '8000' });
+    const server = new ApiServer(env);
 
     // Assert
 
@@ -113,14 +95,13 @@ describe('Server [Class]', () => {
 
   it('Should register endpoints from injected Controllers', async () => {
     // Arrange
-    const server = new ApiServer({ debug: true, port: '8000' }, {
+    const server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const expectedPrefix = 'Test';
+    const expectedPrefix = 'test';
     const controller = new TestController();
 
     // Act
-
     // @ts-ignore
     await server.registerControllers(server.controllers);
     const getEndpoint = server.routes.find((r) => r.route === `/${expectedPrefix}/TestGet`);
@@ -128,23 +109,20 @@ describe('Server [Class]', () => {
     // Assert
     if (getEndpoint) {
       assert.equal(getEndpoint.type === 'GET', true, 'TestGet route not to GET type');
-      //@ts-ignore
-      assert.equal(getEndpoint.endpoint.fn, controller.TestGet, 'Registered route does not have same function instance');
+
+      assert.equal(getEndpoint.endpoint.fnName, controller.TestGet.name, 'Registered route does not have same function instance');
     } else {
       assert.equal(server.routes, [], 'Routes not as expected');
     }
   });
 
   it('Should not register a controller without a decorator', async () => {
-    // Arrange
-    const server = new ApiServer({ debug: true, port: '8000' }, {
-      controllers: [InvalidController],
-    });
-
     // Act
     try {
-      // @ts-ignore
-      await server.registerControllers(server.controllers);
+      const server = new ApiServer(env, {
+        controllers: [InvalidController],
+      });
+
     } catch (err) {
 
       // Assert
@@ -156,8 +134,8 @@ describe('Server [Class]', () => {
 
   it('Should not register an endpoint if auth required, but none supplied', async () => {
     // Arrange
-    const server = new ApiServer({ debug: true, port: '8000' }, {
-      controllers: [InvalidAuthRoute],
+    const server = new ApiServer(env, {
+      controllers: [InvalidAuthRouteController],
     });
 
     // Act
@@ -175,14 +153,16 @@ describe('Server [Class]', () => {
 
   it('Should register an overwritten endpoint route', async () => {
     // Arrange
-    const server = new ApiServer({ debug: true, port: '8000' }, {
+    const server = new ApiServer(env, {
       controllers: [TestController],
     });
+
+    const expectedRoute = '/test/OverrideRoute';
 
     // Act
     // @ts-ignore
     await server.registerControllers(server.controllers);
-    const route = server.routes.find((r) => r.route === '/Test/OverrideRoute');
+    const route = server.routes.find((r) => r.route === expectedRoute);
 
     // Assert
     assert.equal(route !== undefined, true, 'Route not registered');
@@ -192,15 +172,15 @@ describe('Server [Class]', () => {
 
 describe('Server', () => {
   let server: ApiServer;
+  const env: IServerEnvironment = { port: '8000', logging: LoggingLevel.none, debug: true };
   afterEach(() => server.stop());
 
   it('Should listen on port', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [],
     });
-    const endpoint = `http://localhost:${port}/`;
+    const endpoint = `http://localhost:${env.port}/`;
 
     // Act
     server.start().then(() => {
@@ -220,11 +200,10 @@ describe('Server', () => {
 
   it('Should listen on GET route', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/TestGet`;
+    const endpoint = `http://localhost:${env.port}/Test/TestGet`;
     const expectedBody = 'GET works';
 
     // Act
@@ -245,11 +224,10 @@ describe('Server', () => {
 
   it('Should listen on POST route', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/TestPost`;
+    const endpoint = `http://localhost:${env.port}/Test/TestPost`;
     const expectedBody = 'POST works';
 
     // Act
@@ -270,11 +248,10 @@ describe('Server', () => {
 
   it('Should accept valid schema in POST', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/PostWithSchemaValidation`;
+    const endpoint = `http://localhost:${env.port}/Test/PostWithSchemaValidation`;
     const expectedBody = 'formatting good';
 
     const payload: IExampleObject = {
@@ -308,11 +285,10 @@ describe('Server', () => {
 
   it('Should reject invalid schema in POST', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/PostWithSchemaValidation`;
+    const endpoint = `http://localhost:${env.port}/Test/PostWithSchemaValidation`;
 
     const payload: IExampleObject = {
       id: 1,
@@ -344,11 +320,10 @@ describe('Server', () => {
 
   it('Should accept and parse form data when specified', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/PostWithFormData`;
+    const endpoint = `http://localhost:${env.port}/Test/PostWithFormData`;
 
     const payload: IExampleObject = {
       id: 1,
@@ -382,11 +357,10 @@ describe('Server', () => {
 
   it('Should not parse non-form data when specified', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/PostWithFormData`;
+    const endpoint = `http://localhost:${env.port}/Test/PostWithFormData`;
 
     const payload: IExampleObject = {
       id: 1,
@@ -418,11 +392,10 @@ describe('Server', () => {
 
   it('Should not accept non-json when default (JSON) specified', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/PostJsonEcho`;
+    const endpoint = `http://localhost:${env.port}/Test/PostJsonEcho`;
 
     const payload: IExampleObject = {
       id: 1,
@@ -454,11 +427,10 @@ describe('Server', () => {
 
   it('Should accept and parse url-encoded data when specified', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/PostWithUrlEncoded`;
+    const endpoint = `http://localhost:${env.port}/Test/PostWithUrlEncoded`;
 
     const payload: IExampleObject = {
       id: 1,
@@ -492,11 +464,10 @@ describe('Server', () => {
 
   it('Should not parse non-url-encoded data when specified', (done) => {
     // Arrange
-    const port = '8000';
-    server = new ApiServer({ debug: true, port }, {
+    server = new ApiServer(env, {
       controllers: [TestController],
     });
-    const endpoint = `http://localhost:${port}/Test/PostWithUrlEncoded`;
+    const endpoint = `http://localhost:${env.port}/Test/PostWithUrlEncoded`;
 
     const payload: IExampleObject = {
       id: 1,
