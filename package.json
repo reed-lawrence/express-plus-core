@@ -1,6 +1,6 @@
 {
   "name": "@express-plus/core",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Descriptive and simplified typescript REST framework built on Express",
   "scripts": {
     "build": "node scripts/clean-dist.js && tsc",
