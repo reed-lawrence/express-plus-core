@@ -100,7 +100,7 @@ export class ControllerOptions implements IControllerOptions {
 }
 
 export function Controller(options?: IControllerOptions) {
-  return (constructor: new (args?: any) => object) => {
+  return (constructor: Function) => {
     const params = new ControllerOptions(options);
     const endpoints: ApiEndpoint[] = registerEndpoints(constructor.prototype);
 
