@@ -4,7 +4,7 @@ import { TestController } from "./controllers/test.controller";
 
 const server = new ApiServer({ debug: true, port: '8000' }, {
   controllers: [
-    TestController,
+    new TestController(),
   ],
 });
 

@@ -2,6 +2,8 @@ import assert, { fail } from 'assert';
 import { afterEach, describe, it } from 'mocha';
 import 'reflect-metadata';
 import request from 'request';
+import { IApiController } from '../src/api-controller';
+import { ApiEndpoint } from '../src/api-endpoint';
 import { ApiServer, LoggingLevel, ServerErrorMessages } from '../src/api-server';
 import { ControllerOptions } from '../src/decorators/controller.decorator';
 import { HttpRequestType } from '../src/decorators/http-types.decorator';
@@ -13,6 +15,18 @@ import { CustomRouteController } from './controllers/custom-route.controller';
 import { TestController } from './controllers/test.controller';
 
 describe('Controller [Class]', () => {
+  it('Should assign hidden properties', () => {
+    // Arrange
+    const controller: any = new TestController();
+
+    // Act
+    const keys = Reflect.getMetadataKeys(controller);
+    var endpoints: ApiEndpoint[] = (controller as IApiController)._endpoints;
+
+    // Assert
+    assert.strictEqual(true, endpoints.length > 0)
+  });
+
   it('Should create controller metadata', () => {
     // Arrange
     const controller = new TestController();
@@ -26,28 +40,27 @@ describe('Controller [Class]', () => {
 
   });
 
-  it('Should register all endpoints', async () => {
+  it('Should register all endpoints', () => {
     // Arrange
-    const controller = new TestController();
+    const controller: IApiController = new TestController() as any;
     const postRoute = 'TestPost';
     const getRoute = 'TestGet';
 
     // Act
-    await controller.registerEndpoints();
-    const postEndpoint = controller.endpoints.find((e) => e.route === postRoute);
-    const getEndpoint = controller.endpoints.find((e) => e.route === getRoute);
+    const postEndpoint = controller._endpoints.find((e) => e.route === postRoute);
+    const getEndpoint = controller._endpoints.find((e) => e.route === getRoute);
 
     // Assert
     if (postEndpoint) {
-      assert.equal(postEndpoint.type, HttpRequestType.POST, 'Post endpoint not of POST request enum');
-      assert.equal(postEndpoint.fnName, controller.TestPost.name, 'Function not bound correctly to POST endpoint');
+      assert.strictEqual(postEndpoint.type, HttpRequestType.POST, 'Post endpoint not of POST request enum');
+      assert.strictEqual(postEndpoint.fnName, controller.TestPost.name, 'Function not bound correctly to POST endpoint');
     } else {
       assert.fail('Post endpoint not created');
     }
 
     if (getEndpoint) {
-      assert.equal(getEndpoint.type, HttpRequestType.GET, 'Post endpoint not of POST request enum');
-      assert.equal(getEndpoint.fnName, controller.TestGet.name, 'Function not bound correctly to POST endpoint');
+      assert.strictEqual(getEndpoint.type, HttpRequestType.GET, 'Post endpoint not of POST request enum');
+      assert.strictEqual(getEndpoint.fnName, controller.TestGet.name, 'Function not bound correctly to POST endpoint');
     } else {
       assert.fail('Get endpoint not created');
     }
@@ -58,7 +71,7 @@ describe('Controller [Class]', () => {
     const controller = new TestController();
 
     // Assert
-    assert.equal(controller.endpoints.findIndex((e) => e.fnName === controller.shouldNotRegister.name) === -1, true);
+    assert.strictEqual(((controller as any) as IApiController)._endpoints.findIndex((e) => e.fnName === controller.shouldNotRegister.name) === -1, true);
   });
 
   it('Should assign custom route metadata', () => {
@@ -96,7 +109,7 @@ describe('Server [Class]', () => {
   it('Should register endpoints from injected Controllers', async () => {
     // Arrange
     const server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const expectedPrefix = 'test';
     const controller = new TestController();
@@ -120,8 +133,11 @@ describe('Server [Class]', () => {
     // Act
     try {
       const server = new ApiServer(env, {
-        controllers: [InvalidController],
+        controllers: [new InvalidController()],
       });
+
+      // @ts-ignore
+      await server.registerControllers(server.controllers);
 
     } catch (err) {
 
@@ -135,7 +151,7 @@ describe('Server [Class]', () => {
   it('Should not register an endpoint if auth required, but none supplied', async () => {
     // Arrange
     const server = new ApiServer(env, {
-      controllers: [InvalidAuthRouteController],
+      controllers: [new InvalidAuthRouteController()],
     });
 
     // Act
@@ -154,7 +170,7 @@ describe('Server [Class]', () => {
   it('Should register an overwritten endpoint route', async () => {
     // Arrange
     const server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
 
     const expectedRoute = '/test/OverrideRoute';
@@ -201,7 +217,7 @@ describe('Server', () => {
   it('Should listen on GET route', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/TestGet`;
     const expectedBody = 'GET works';
@@ -225,7 +241,7 @@ describe('Server', () => {
   it('Should listen on POST route', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/TestPost`;
     const expectedBody = 'POST works';
@@ -249,7 +265,7 @@ describe('Server', () => {
   it('Should accept valid schema in POST', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/PostWithSchemaValidation`;
     const expectedBody = 'formatting good';
@@ -286,7 +302,7 @@ describe('Server', () => {
   it('Should reject invalid schema in POST', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/PostWithSchemaValidation`;
 
@@ -321,7 +337,7 @@ describe('Server', () => {
   it('Should accept and parse form data when specified', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/PostWithFormData`;
 
@@ -358,7 +374,7 @@ describe('Server', () => {
   it('Should not parse non-form data when specified', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/PostWithFormData`;
 
@@ -393,7 +409,7 @@ describe('Server', () => {
   it('Should not accept non-json when default (JSON) specified', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/PostJsonEcho`;
 
@@ -428,7 +444,7 @@ describe('Server', () => {
   it('Should accept and parse url-encoded data when specified', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/PostWithUrlEncoded`;
 
@@ -465,7 +481,7 @@ describe('Server', () => {
   it('Should not parse non-url-encoded data when specified', (done) => {
     // Arrange
     server = new ApiServer(env, {
-      controllers: [TestController],
+      controllers: [new TestController()],
     });
     const endpoint = `http://localhost:${env.port}/Test/PostWithUrlEncoded`;
 

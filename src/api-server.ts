@@ -3,8 +3,8 @@ import express from 'express';
 import { Dictionary, NextFunction, Request, Response } from 'express-serve-static-core';
 import http from 'http';
 import multer from 'multer';
+import { IApiController } from './api-controller';
 
-import { ApiController } from './api-controller';
 import { ApiEndpoint } from './api-endpoint';
 import { formDataGuardMiddleware, jsonGuardMiddleware, urlEncodedGuardMiddleware } from './content-type-guards';
 import { HttpPostOptions } from './decorators/http-post-options';
@@ -30,7 +30,7 @@ export enum LoggingLevel {
 }
 
 export interface IServerOptions {
-  controllers: Array<(new () => ApiController)>;
+  controllers: Object[];
   routePrefix?: string;
   errorHandler?: (err: any, req: Request<Dictionary<string>>, res: Response, next: NextFunction) => any;
   authMethod?: (req: Request<Dictionary<string>>, res: Response, next: NextFunction) => Promise<void>;
@@ -55,7 +55,7 @@ export class ApiServer {
   /**
    * Array of ApiControllers to handle
    */
-  public readonly controllers: ApiController[] = new Array<ApiController>();
+  public readonly controllers: IApiController[] = [];
 
   /**
    * Route prefix to prepend to each controller/endpoint route
@@ -108,9 +108,9 @@ export class ApiServer {
     if (options) {
       if (options.controllers) {
         let controllerId = 1;
-        for (const controllerConstructor of options.controllers) {
-          this.controllers.push(new controllerConstructor());
-          this.controllers[this.controllers.length - 1].controller_id = controllerId;
+        for (const controller of options.controllers) {
+          this.controllers.push(controller as IApiController);
+          this.controllers[this.controllers.length - 1]._id = controllerId;
           controllerId++;
         }
       }
@@ -171,13 +171,12 @@ export class ApiServer {
     return;
   }
 
-  private async registerControllers(controllers: ApiController[]) {
+  private async registerControllers(controllers: IApiController[]) {
     for (const controller of controllers) {
       if (this.hasControllerDecorator(controller)) {
-        controller.registerEndpoints();
 
-        for (const endpoint of controller.endpoints) {
-          let route = `${this.routePrefix}/${controller.getRoute()}`;
+        for (const endpoint of controller._endpoints) {
+          let route = `${this.routePrefix}/${controller._route}`;
           if (endpoint.route) {
             route += `/${endpoint.route}`;
           }
@@ -294,7 +293,7 @@ export class ApiServer {
     return;
   }
 
-  private hasControllerDecorator(controller: ApiController) {
+  private hasControllerDecorator(controller: IApiController) {
     const keys = Reflect.getMetadataKeys(controller);
     for (const key of keys) {
       if (typeof key === 'string') {
@@ -327,10 +326,10 @@ export class ApiServer {
     };
   }
 
-  private createContextFn<C extends ApiController>(controller: C, endpoint: ApiEndpoint) {
+  private createContextFn<C extends IApiController>(controller: C, endpoint: ApiEndpoint) {
     // Get the index of the corresponding controller
     // Do this, because otherwise creating a generic function messes with the `this` property in the controller
-    const cIndex = this.controllers.findIndex((c) => c.controller_id === controller.controller_id);
+    const cIndex = this.controllers.findIndex((c) => c._id === controller._id);
     if (cIndex === -1) {
       throw new Error('Unable to find matching controller corresponding to endpoint');
     }

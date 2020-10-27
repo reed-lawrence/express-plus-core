@@ -1,4 +1,3 @@
-import { ApiController } from "../../src/api-controller";
 import { Controller } from "../../src/decorators/controller.decorator";
 import { HttpDelete, HttpGet, HttpPost, HttpPut } from "../../src/decorators/http-types.decorator";
 import { ApplicationError } from "../../src/error-handlers/application-error";
@@ -8,11 +7,9 @@ import { Ok } from "../../src/return-types";
 import { Product } from '../classes/product';
 
 @Controller()
-export class ProductsController extends ApiController {
+export class ProductsController {
 
-  constructor() {
-    super();
-  }
+  constructor() { }
 
   private products: Product[] = [
     new Product({ id: 1, name: 'Tomato Soup', price: 199, category: 'Groceries' }),
